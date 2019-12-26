@@ -1,0 +1,6 @@
+C:\Users\yaroslav.zatyamin\source\repos\CallFlowPriorityConsole\CallFlowPriorityConsole\bin\Release\CallFlowPriorityConsole.exe.config
+C:\Users\yaroslav.zatyamin\source\repos\CallFlowPriorityConsole\CallFlowPriorityConsole\bin\Release\CallFlowPriorityConsole.exe
+C:\Users\yaroslav.zatyamin\source\repos\CallFlowPriorityConsole\CallFlowPriorityConsole\bin\Release\CallFlowPriorityConsole.pdb
+C:\Users\yaroslav.zatyamin\source\repos\CallFlowPriorityConsole\CallFlowPriorityConsole\obj\Release\CallFlowPriorityConsole.csprojAssemblyReference.cache
+C:\Users\yaroslav.zatyamin\source\repos\CallFlowPriorityConsole\CallFlowPriorityConsole\obj\Release\CallFlowPriorityConsole.exe
+C:\Users\yaroslav.zatyamin\source\repos\CallFlowPriorityConsole\CallFlowPriorityConsole\obj\Release\CallFlowPriorityConsole.pdb
