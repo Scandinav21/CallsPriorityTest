@@ -50,12 +50,11 @@ namespace CallFlowPriorityConsole
 
         static async void StartSimulation()
         {
+            Console.CursorVisible = false;
+
             const int periodSec = 900;
             const int minTalkTimePeriod = 10;
             const int maxTalkTimePeriod = 300;
-            const int operatorsCountInSkill = 10;
-            const int minPriority = 1;
-            const int maxPriority = 10;
             int callsCountIn15m = 100;
 
             int currentTime = 1;
@@ -64,8 +63,9 @@ namespace CallFlowPriorityConsole
             Random random = new Random();
 
             List<Skill> skills = new List<Skill>();
-            skills.Add(new Skill("SG_50", GenerateOperators(40, 0), 5, GenerateCallsAllocation(periodSec, 120, 240, 100)));
-            skills.Add(new Skill("SG_21", GenerateOperators(15, 0), 5, GenerateCallsAllocation(periodSec, 180, 420, 20)));
+            skills.Add(new Skill("SG_50", GenerateOperators(50, 0), 4, GenerateCallsAllocation(periodSec, 120, 240, 150)));
+            skills.Add(new Skill("SG_21", GenerateOperators(10, 45), 5, GenerateCallsAllocation(periodSec, 180, 420, 25)));
+
             skills = skills.OrderBy(s => s.Priority).ToList();
 
             while (true)
@@ -75,15 +75,10 @@ namespace CallFlowPriorityConsole
                     //Обновляем время в операторах и скиллах
                     skill.statistic.AbandonedCalls += UpdateSkillData(skills, skill);
 
-                    CheckQueueInSkills(skills, minPriority, maxPriority, currentTime);
+                    if (skill.SkillName == "SG_21")
+                        RaisePriority(skill, 60, 2);
 
-                    //if (currentTime > periodRequestData &&
-                    //    skills.Select(s => s).Where(s => s.ActiveCalls.Count == 0).Count() == 2 &&
-                    //    skills.Select(s => s).Where(s => s.CallsInQueue.Count == 0).Count() == 2)
-                    //{
-                    //    PrintStatistics(currentTime, skills);
-                    //    return;
-                    //}
+                    CheckQueueInSkills(skills, currentTime);
 
                     if (currentTime == periodRequestData)
                     {
@@ -113,7 +108,7 @@ namespace CallFlowPriorityConsole
 
                         //Добавляем новый звонок в очередь на скилле
                         if (oper == null)
-                            PutCallToQueue(skill, currentTime - (periodRequestData - periodSec));
+                            PutCallToQueue(skills, skill, currentTime - (periodRequestData - periodSec));
                         else
                             //Добавляем звонок оператору
                             AnswerCall(oper, skills, skill, currentTime - (periodRequestData - periodSec));
@@ -133,7 +128,7 @@ namespace CallFlowPriorityConsole
             Random random = new Random();
 
             //Добавляем звонок оператору
-            oper.call = new Call(random.Next(1, 9999), currentSkill.CallAllocation.Item2[currentSkill.CallAllocation.Item1.IndexOf(currentTime)], currentTime);
+            oper.call = new Call(random.Next(1, 9999), currentSkill.CallAllocation.Item2[currentSkill.CallAllocation.Item1.IndexOf(currentTime)], currentTime, currentSkill.Priority);
 
             oper.call.CallAnsweredTime = currentTime;
 
@@ -151,59 +146,84 @@ namespace CallFlowPriorityConsole
             SetOperStatusInAllSkills(skills, oper);
         }
 
-        private static void PutCallToQueue(Skill skill, int currentTime)
+        private static void PutCallToQueue(List<Skill> skills, Skill skill, int currentTime)
         {
-            Random random = new Random();
-
-            Call call = new Call(random.Next(1, 9999), skill.CallAllocation.Item2[skill.CallAllocation.Item1.IndexOf(currentTime)], currentTime);
+            Call call = new Call(GetFreeCallID(skills), skill.CallAllocation.Item2[skill.CallAllocation.Item1.IndexOf(currentTime)], currentTime, skill.Priority);
 
             call.CallOfferedTime = currentTime;
 
             skill.CallsInQueue.Add(call);
         }
 
-        private static void CheckQueueInSkills(List<Skill> skills, int minPrior, int maxPrior, int currentTime)
+        private static void CheckQueueInSkills(List<Skill> skills, int currentTime)
         {
-            List<Skill> sortedListSkills = new List<Skill>();
+            List<Call> allCalls = new List<Call>();
 
-            for (int i = minPrior; i <= maxPrior; i++)
+            //Получаем все звонки со всех скиллов
+            skills.Select(s => s.CallsInQueue).ToList().ForEach(lc => lc.ForEach(c => allCalls.Add(c)));
+
+            //Сортируем по уменьшению приоритета
+            allCalls = allCalls.OrderBy(c => c.CallPriority).ToList();
+
+            foreach (var call in allCalls)
             {
-                List<Skill> equalSkillPriority = skills.Select(s => s).Where(s => s.Priority == i).ToList();
+                List<Call> callsSamePriority = new List<Call>();
 
-                if (equalSkillPriority.Count > 1)
+                //Получаем вызовы с одинаковым приоритетом
+                var t = skills.Select(s => s)
+                    .Select(s => s.CallsInQueue)
+                    .Select(lc => lc.Select(c => c).Where(c => c.CallPriority == call.CallPriority));
+
+                foreach (var lc in t)
                 {
-                    Random r = new Random();
-
-                    int randomInt = 0;
-
-                    do
+                    foreach (var c in lc)
                     {
-                        randomInt = r.Next(0, equalSkillPriority.Count - 1);
-
-                        if (!sortedListSkills.Contains(equalSkillPriority[randomInt]))
-                        {
-                            sortedListSkills.Add(equalSkillPriority[randomInt]);
-                            equalSkillPriority.Remove(equalSkillPriority[randomInt]);
-                        }
-
-                    } while (equalSkillPriority.Count != 0);
-
-                }
-                else
-                    foreach (var sk in equalSkillPriority)
-                    {
-                        sortedListSkills.Add(sk);
+                        callsSamePriority.Add(c);
                     }
-            }
+                }
 
-            for (int i = 0; i < sortedListSkills.Count; i++)
-            {
-                if (sortedListSkills[i].CallsInQueue.Count > 0 && GetFreeOperator(sortedListSkills[i].Operators) != null)
+                callsSamePriority = callsSamePriority.OrderBy(c => c.Duration).ToList();
+
+                foreach (var c in callsSamePriority)
                 {
-                    Operator freeOper = GetFreeOperator(sortedListSkills[i].Operators);
-                    PassCallFromQueueToOperator(sortedListSkills[i], freeOper, currentTime);
-                    SetOperStatusInAllSkills(sortedListSkills, freeOper);
-                    return;
+                    //Находим скилл, в очереди которого стоит вызов с макс приоритетом и длительностью
+                    Skill skillWithMaxPriorCall = skills.Find(s => s.CallsInQueue.Contains(c));
+                    Operator freeOper = null;
+
+                    //Находим свободного оператора
+                    if (skillWithMaxPriorCall != null)
+                        freeOper = GetFreeOperator(skillWithMaxPriorCall.Operators);
+
+                    //Передаем вызов оператору
+                    if(freeOper != null)
+                    {
+                        PassCallFromQueueToOperator(skillWithMaxPriorCall, freeOper, currentTime);
+                        SetOperStatusInAllSkills(skills, freeOper);
+                    }
+                }
+            }
+        }
+
+        private static int GetFreeCallID(List<Skill> skills)
+        {
+            int newCallID = 0;
+            Random random = new Random();
+
+            while (true)
+            {
+                newCallID = random.Next(1, 999999);
+
+                var ActiveCalls = skills.Select(s => s.ActiveCalls).Select(lc => lc.Select(c => c).Where(c => c.CallID == newCallID));
+                var CallsInQueue = skills.Select(s => s.CallsInQueue).Select(lc => lc.Select(c => c).Where(c => c.CallID == newCallID));
+
+                foreach (var actC in ActiveCalls)
+                {
+                    if (actC.Count() == 0)
+                        foreach (var queueC in CallsInQueue)
+                        {
+                            if (queueC.Count() == 0)
+                                return newCallID;
+                        }
                 }
             }
         }
@@ -335,6 +355,8 @@ namespace CallFlowPriorityConsole
 
                 Console.WriteLine($"--------------------------------------");
             }
+
+            Console.SetCursorPosition(0, 0);
         }
 
         static Operator GetFreeOperator(List<Operator> opers)
@@ -393,6 +415,16 @@ namespace CallFlowPriorityConsole
             TimeSpan timeSpan = TimeSpan.FromSeconds(sec);
 
             return timeSpan.ToString(@"hh\:mm\:ss");
+        }
+
+        static void RaisePriority(Skill currentSkill, int maxWaitTimeBeforeRaisePrior, int raisedPrior)
+        {
+            List<Call> callRaisePriority = currentSkill.CallsInQueue.Select(c => c).Where(c => c.Duration > maxWaitTimeBeforeRaisePrior).ToList();
+
+            foreach (var call in callRaisePriority)
+            {
+                call.CallPriority = raisedPrior;
+            }
         }
     }
 
@@ -456,14 +488,16 @@ namespace CallFlowPriorityConsole
         public int Duration { get; set; }
         public int CallOfferedTime { get; set; }
         public int CallAnsweredTime { get; set; }
+        public int CallPriority { get; set; }
 
-        public Call(int callID, int fullCallDuration, int offeredTime)
+        public Call(int callID, int fullCallDuration, int offeredTime, int priority)
         { 
             CallID = callID;
             TalkFullDuration = fullCallDuration;
             Duration = 0;
             CallAnsweredTime = 0;
             CallOfferedTime = offeredTime;
+            CallPriority = priority;
         }
     }
 
