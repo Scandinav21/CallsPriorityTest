@@ -38,6 +38,53 @@ namespace CallFlowPriorityConsole
             return (callsAllocation, callsTalkTimeAllocation);
         }
 
+        public static (List<int>, List<int>) GenerateCallsAllocation(Dictionary<int, int> callDurationAllocation, int intervalSeconds, int minTalkTimePer, int maxTalkTimePer)
+        {
+            List<int> callsAllocation = new List<int>();
+            List<int> callsTalkTimeAllocation = new List<int>();
+
+            Random randomSeconds = new Random();
+
+            while(callDurationAllocation.Values.Select(v => v).Sum() > callsAllocation.Count())
+            {
+                //Генерим время поступления вызова
+                int newCallOfferedTime = randomSeconds.Next(1, intervalSeconds);
+
+                ////Если вызов на такой секунде уже присутствует, то пропускаем добавление данного вызова в список
+                //if (callsAllocation.Contains(newCallOfferedTime))
+                //    continue;
+
+                //Генерим длительность вызова
+                int newCallDuration = randomSeconds.Next(minTalkTimePer, maxTalkTimePer);
+
+                //Получаем ключ словаря с распределением соответственно длительности звонка
+                int numberAllocationKey = callDurationAllocation.Keys.Select(c => c)
+                    .Where(c => (newCallDuration >= c && newCallDuration < c + 60) 
+                    || (newCallDuration >= c && c == callDurationAllocation.Keys.Last())).FirstOrDefault();
+
+                //Получаем количество вызовов с данным диапазоном длительности
+                int callsWithTheSameDurationInterval = callsTalkTimeAllocation.Select(c => c)
+                    .Where(c => (c >= numberAllocationKey && c < numberAllocationKey + 60 && numberAllocationKey < 660)
+                        || (c >= callDurationAllocation.Keys.Last() && numberAllocationKey == callDurationAllocation.Keys.Last())).Count();
+
+                if (callDurationAllocation[numberAllocationKey] > callsWithTheSameDurationInterval)
+                {
+                    callsAllocation.Add(newCallOfferedTime);
+                    callsTalkTimeAllocation.Add(newCallDuration);
+                }
+            }
+
+            //callsTalkTimeAllocation.Sort();
+            //foreach (var call in callsTalkTimeAllocation)
+            //{
+            //    Console.WriteLine(call);
+            //}
+
+            callsAllocation.Sort();
+
+            return (callsAllocation, callsTalkTimeAllocation);
+        }
+
         public static List<Operator> GenerateOperators(int countOfOperators, int startIndex)
         {
             List<Operator> operators = new List<Operator>();
@@ -52,6 +99,8 @@ namespace CallFlowPriorityConsole
         {
             Console.CursorVisible = false;
 
+            const int MaxPeriodTime = 86400;
+
             const int periodSec = 900;
             const int minTalkTimePeriod = 10;
             const int maxTalkTimePeriod = 300;
@@ -62,13 +111,50 @@ namespace CallFlowPriorityConsole
 
             Random random = new Random();
 
+            //Генерим случайное число, если в интервале, % заполнения еще меньше чем заданный по словарю, добавляем в коллекцию вызов
+
             List<Skill> skills = new List<Skill>();
-            skills.Add(new Skill("SG_50", GenerateOperators(50, 0), 4, GenerateCallsAllocation(periodSec, 120, 240, 150)));
-            skills.Add(new Skill("SG_21", GenerateOperators(10, 45), 5, GenerateCallsAllocation(periodSec, 180, 420, 25)));
+
+            skills.Add(new Skill("SG_50", GenerateOperators(50, 0), 4, GenerateCallsAllocation(
+                //Словарь распределения вызовов по времени
+                new Dictionary<int, int>
+                {
+                    {0, 35},
+                    {60, 40},
+                    {120, 25},
+                    {180, 19},
+                    {240, 10},
+                    {300, 7},
+                    {360, 5},
+                    {420, 3},
+                    {480, 2},
+                    {540, 1},
+                    {600, 1},
+                    {660, 2}
+                }, periodSec, 10, 900)));
+
+            skills.Add(new Skill("SG_21", GenerateOperators(10, 45), 5, GenerateCallsAllocation(
+                //Словарь распределения вызовов по времени
+                new Dictionary<int, int>
+                {
+                    {0, 9},
+                    {60, 5},
+                    {120, 8},
+                    {180, 7},
+                    {240, 6},
+                    {300, 4},
+                    {360, 4},
+                    {420, 2},
+                    {480, 1},
+                    {540, 1},
+                    {600, 1},
+                    {660, 2}
+                }, periodSec, 10, 900)));
 
             skills = skills.OrderBy(s => s.Priority).ToList();
 
-            while (true)
+            while(true)
+            //while (currentTime < MaxPeriodTime)
             {
                 foreach (var skill in skills)
                 {
@@ -76,19 +162,50 @@ namespace CallFlowPriorityConsole
                     skill.statistic.AbandonedCalls += UpdateSkillData(skills, skill);
 
                     if (skill.SkillName == "SG_21")
-                        RaisePriority(skill, 60, 2);
+                        TryRaisePriority(skill, 60, 2);
 
                     CheckQueueInSkills(skills, currentTime);
 
+                    //Reload calls data
                     if (currentTime == periodRequestData)
                     {
                         switch (skill.SkillName)
                         {
                             case "SG_50":
-                                skill.LoadNewCallsAllocation(GenerateCallsAllocation(periodSec, 10, 300, 100));
+                                skill.LoadNewCallsAllocation(GenerateCallsAllocation(
+                                    new Dictionary<int, int>
+                                    {
+                                        {0, 35},
+                                        {60, 40},
+                                        {120, 25},
+                                        {180, 19},
+                                        {240, 10},
+                                        {300, 7},
+                                        {360, 5},
+                                        {420, 3},
+                                        {480, 2},
+                                        {540, 1},
+                                        {600, 1},
+                                        {660, 2}
+                                    }, periodSec, 10, 900));
                                 break;
                             case "SG_21":
-                                skill.LoadNewCallsAllocation(GenerateCallsAllocation(periodSec, 50, 900, 50));
+                                skill.LoadNewCallsAllocation(GenerateCallsAllocation(
+                                    new Dictionary<int, int>
+                                    {
+                                        {0, 9},
+                                        {60, 5},
+                                        {120, 8},
+                                        {180, 7},
+                                        {240, 6},
+                                        {300, 4},
+                                        {360, 4},
+                                        {420, 2},
+                                        {480, 1},
+                                        {540, 1},
+                                        {600, 1},
+                                        {660, 2}
+                                    }, periodSec, 10, 900));
                                 break;
                             default:
                                 skill.LoadNewCallsAllocation(GenerateCallsAllocation(periodSec, minTalkTimePeriod, maxTalkTimePeriod, callsCountIn15m));
@@ -98,8 +215,7 @@ namespace CallFlowPriorityConsole
                         periodRequestData += periodSec;
                     }
 
-                    //Если в текущую секунду должен поступить звонок
-                    if (skill.CallAllocation.Item1.Contains(currentTime - (periodRequestData - periodSec)))
+                    foreach (var call in skill.CallAllocation.Item1.Where(c => c == currentTime - (periodRequestData - periodSec)).ToList())
                     {
                         skill.statistic.CallsOffered++;
 
@@ -116,6 +232,7 @@ namespace CallFlowPriorityConsole
                 }
 
                 if (currentTime % 10 == 0 || currentTime == 1)
+                //if(currentTime >= MaxPeriodTime-1)
                     PrintStatistics(currentTime, skills);
 
                 await Task.Delay(1000);
@@ -142,6 +259,8 @@ namespace CallFlowPriorityConsole
             currentSkill.statistic.CallAnswered++;
 
             currentSkill.statistic.SLCalls++;
+
+            currentSkill.statistic.Calls.Add(oper.call);
 
             SetOperStatusInAllSkills(skills, oper);
         }
@@ -345,13 +464,17 @@ namespace CallFlowPriorityConsole
                 Console.WriteLine($"--------------------------------------");
             }
 
-            Console.WriteLine($"--------- HISTORICAL DATA ------------");
             foreach (var skill in skills)
             {
+                Console.WriteLine($"--------- HISTORICAL DATA {skill.SkillName} ------------");
+
                 foreach (var call in skill.HistoricalCalls)
                 {
-                    Console.WriteLine($"Call {call.CallID} int skill {skill.SkillName} was offered at {ConvertSecToHumanReadyFormat(call.CallOfferedTime)} and was answered at {ConvertSecToHumanReadyFormat(call.CallAnsweredTime)} with duration {ConvertSecToHumanReadyFormat(call.TalkFullDuration)}");
+                    //Console.WriteLine($"Call {call.CallID} int skill {skill.SkillName} was offered at {ConvertSecToHumanReadyFormat(call.CallOfferedTime)} and was answered at {ConvertSecToHumanReadyFormat(call.CallAnsweredTime)} with duration {ConvertSecToHumanReadyFormat(call.TalkFullDuration)}");
                 }
+
+                if(skill.statistic.Calls.Count > 0)
+                    Console.WriteLine($"Average Talk Time = { ConvertSecToHumanReadyFormat(skill.statistic.Calls.Sum(c => c.Duration) / skill.statistic.Calls.Count) }");
 
                 Console.WriteLine($"--------------------------------------");
             }
@@ -417,7 +540,7 @@ namespace CallFlowPriorityConsole
             return timeSpan.ToString(@"hh\:mm\:ss");
         }
 
-        static void RaisePriority(Skill currentSkill, int maxWaitTimeBeforeRaisePrior, int raisedPrior)
+        static void TryRaisePriority(Skill currentSkill, int maxWaitTimeBeforeRaisePrior, int raisedPrior)
         {
             List<Call> callRaisePriority = currentSkill.CallsInQueue.Select(c => c).Where(c => c.Duration > maxWaitTimeBeforeRaisePrior).ToList();
 
@@ -509,6 +632,7 @@ namespace CallFlowPriorityConsole
         public int SLCalls { get; set; }
         public int SL { get; set; }
         public int SLSeconds { get; set; }
+        public List<Call> Calls { get; set; }
 
         public Statistics()
         {
@@ -518,6 +642,7 @@ namespace CallFlowPriorityConsole
             SLCalls = 0;
             SL = 100;
             SLSeconds = 10;
+            Calls = new List<Call>();
         }
     }
 }
