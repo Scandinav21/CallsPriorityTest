@@ -1,0 +1,113 @@
+{
+  "format": 1,
+  "restore": {
+    "C:\\Users\\yaroslav.zatyamin\\source\\repos\\CallFlowPriorityConsole\\CallFlowMainModule\\CallFlowMainModule.csproj": {}
+  },
+  "projects": {
+    "C:\\Users\\yaroslav.zatyamin\\source\\repos\\CallFlowPriorityConsole\\CallFlowCore\\CallFlowCore.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\yaroslav.zatyamin\\source\\repos\\CallFlowPriorityConsole\\CallFlowCore\\CallFlowCore.csproj",
+        "projectName": "CallFlowCore",
+        "projectPath": "C:\\Users\\yaroslav.zatyamin\\source\\repos\\CallFlowPriorityConsole\\CallFlowCore\\CallFlowCore.csproj",
+        "frameworks": {
+          "net472": {
+            "projectReferences": {
+              "C:\\Users\\yaroslav.zatyamin\\source\\repos\\CallFlowPriorityConsole\\CallFlowModel\\CallFlowModel.csproj": {
+                "projectPath": "C:\\Users\\yaroslav.zatyamin\\source\\repos\\CallFlowPriorityConsole\\CallFlowModel\\CallFlowModel.csproj"
+              },
+              "C:\\Users\\yaroslav.zatyamin\\source\\repos\\CallFlowPriorityConsole\\CallFlowPriorityConsole\\CallFlowPriorityConsole.csproj": {
+                "projectPath": "C:\\Users\\yaroslav.zatyamin\\source\\repos\\CallFlowPriorityConsole\\CallFlowPriorityConsole\\CallFlowPriorityConsole.csproj"
+              }
+            }
+          }
+        }
+      },
+      "frameworks": {
+        "net472": {}
+      }
+    },
+    "C:\\Users\\yaroslav.zatyamin\\source\\repos\\CallFlowPriorityConsole\\CallFlowMainModule\\CallFlowMainModule.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\yaroslav.zatyamin\\source\\repos\\CallFlowPriorityConsole\\CallFlowMainModule\\CallFlowMainModule.csproj",
+        "projectName": "CallFlowMainModule",
+        "projectPath": "C:\\Users\\yaroslav.zatyamin\\source\\repos\\CallFlowPriorityConsole\\CallFlowMainModule\\CallFlowMainModule.csproj",
+        "packagesPath": "C:\\Users\\yaroslav.zatyamin\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\yaroslav.zatyamin\\source\\repos\\CallFlowPriorityConsole\\CallFlowMainModule\\obj\\",
+        "projectStyle": "PackageReference",
+        "skipContentFileWrite": true,
+        "configFilePaths": [
+          "C:\\Users\\yaroslav.zatyamin\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net472"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net472": {
+            "projectReferences": {
+              "C:\\Users\\yaroslav.zatyamin\\source\\repos\\CallFlowPriorityConsole\\CallFlowCore\\CallFlowCore.csproj": {
+                "projectPath": "C:\\Users\\yaroslav.zatyamin\\source\\repos\\CallFlowPriorityConsole\\CallFlowCore\\CallFlowCore.csproj"
+              },
+              "C:\\Users\\yaroslav.zatyamin\\source\\repos\\CallFlowPriorityConsole\\CallFlowModel\\CallFlowModel.csproj": {
+                "projectPath": "C:\\Users\\yaroslav.zatyamin\\source\\repos\\CallFlowPriorityConsole\\CallFlowModel\\CallFlowModel.csproj"
+              }
+            }
+          }
+        }
+      },
+      "frameworks": {
+        "net472": {
+          "dependencies": {
+            "Extended.Wpf.Toolkit": {
+              "target": "Package",
+              "version": "[3.7.0, )"
+            },
+            "Prism.Wpf": {
+              "target": "Package",
+              "version": "[7.2.0.1422, )"
+            }
+          }
+        }
+      },
+      "runtimes": {
+        "win": {
+          "#import": []
+        },
+        "win-x64": {
+          "#import": []
+        },
+        "win-x86": {
+          "#import": []
+        }
+      }
+    },
+    "C:\\Users\\yaroslav.zatyamin\\source\\repos\\CallFlowPriorityConsole\\CallFlowModel\\CallFlowModel.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\yaroslav.zatyamin\\source\\repos\\CallFlowPriorityConsole\\CallFlowModel\\CallFlowModel.csproj",
+        "projectName": "CallFlowModel",
+        "projectPath": "C:\\Users\\yaroslav.zatyamin\\source\\repos\\CallFlowPriorityConsole\\CallFlowModel\\CallFlowModel.csproj"
+      },
+      "frameworks": {
+        "net472": {}
+      }
+    },
+    "C:\\Users\\yaroslav.zatyamin\\source\\repos\\CallFlowPriorityConsole\\CallFlowPriorityConsole\\CallFlowPriorityConsole.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\yaroslav.zatyamin\\source\\repos\\CallFlowPriorityConsole\\CallFlowPriorityConsole\\CallFlowPriorityConsole.csproj",
+        "projectName": "CallFlowPriorityConsole",
+        "projectPath": "C:\\Users\\yaroslav.zatyamin\\source\\repos\\CallFlowPriorityConsole\\CallFlowPriorityConsole\\CallFlowPriorityConsole.csproj"
+      },
+      "frameworks": {
+        "net472": {}
+      }
+    }
+  }
+}

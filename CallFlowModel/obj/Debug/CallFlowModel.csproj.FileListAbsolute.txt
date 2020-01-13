@@ -1,0 +1,6 @@
+C:\Users\yaroslav.zatyamin\source\repos\CallFlowPriorityConsole\CallFlowModel\bin\Debug\CallFlowModel.dll.config
+C:\Users\yaroslav.zatyamin\source\repos\CallFlowPriorityConsole\CallFlowModel\bin\Debug\CallFlowModel.dll
+C:\Users\yaroslav.zatyamin\source\repos\CallFlowPriorityConsole\CallFlowModel\bin\Debug\CallFlowModel.pdb
+C:\Users\yaroslav.zatyamin\source\repos\CallFlowPriorityConsole\CallFlowModel\obj\Debug\CallFlowModel.dll
+C:\Users\yaroslav.zatyamin\source\repos\CallFlowPriorityConsole\CallFlowModel\obj\Debug\CallFlowModel.pdb
+C:\Users\yaroslav.zatyamin\source\repos\CallFlowPriorityConsole\CallFlowModel\obj\Debug\CallFlowModel.csprojAssemblyReference.cache
