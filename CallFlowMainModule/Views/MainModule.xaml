@@ -5,44 +5,59 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:core="clr-namespace:CallFlowCore.Converters;assembly=CallFlowCore"
+             xmlns:i="clr-namespace:System.Windows.Interactivity;assembly=System.Windows.Interactivity"
              mc:Ignorable="d" 
-             Height="Auto" Width="300"
+             Height="Auto" Width="Auto" MinWidth="600" MinHeight="600" MaxHeight="800" MaxWidth="800"
              xmlns:prism="http://prismlibrary.com/"
-             prism:ViewModelLocator.AutoWireViewModel="True" ScrollViewer.VerticalScrollBarVisibility="Auto" >
+             prism:ViewModelLocator.AutoWireViewModel="True" ScrollViewer.VerticalScrollBarVisibility="Auto">
     <UserControl.Resources>
         <ResourceDictionary>
             <core:TimeConverter x:Key="timeConverter" />
         </ResourceDictionary>
     </UserControl.Resources>
-    <StackPanel>
-        <WrapPanel>
-            <TextBlock Text="Время симуляции:" Margin="5,5,2,5"/>
-            <TextBlock Text="{Binding CurrentTime, Converter={StaticResource timeConverter}}" Margin="2,5,5,5"/>
-        </WrapPanel>
-        <TextBlock Text="Скорость симуляции: " Margin="5,5,2,5"/>
-        <Slider Value="{Binding SimulationSpeed}" Minimum="1" Maximum="10000" Margin="2,5,5,5"/>
+    <DockPanel LastChildFill="True">
 
-        <TextBlock Text="Краткая сводка:" Margin="5,2" />
-        <TextBox Text="{Binding MainStatisticsInfo}" Margin="5,2" IsEnabled="False" TextWrapping="Wrap"/>
-        <ComboBox ItemsSource="{Binding Skills}" DisplayMemberPath="SkillName" SelectedItem="{Binding SelectedSkill}" Margin="5,5,5,2" Width="Auto" IsEditable="True"/>
-        <ContentControl prism:RegionManager.RegionName="SkillInfoRegion"/>
-        <Button Command="{Binding AddSkill}" Margin="5,1">
-            <Button.Style>
-                <Style TargetType="Button">
-                    <Setter Property="Content" Value="{Binding AddSkillBtnContent}"/>
-                    <Style.Triggers>
-                        <Trigger Property="Content" Value="">
-                            <Setter Property="Visibility" Value="Hidden"/>
-                        </Trigger>
-                    </Style.Triggers>
-                </Style>
-            </Button.Style>
-        </Button>
+        <Grid DockPanel.Dock="Top">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition Width="3*"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock Text="Время симуляции:" Margin="5,5,2,5"/>
+                <TextBlock Text="Скорость симуляции: " Margin="5,5,2,5"/>
+                <TextBlock Text="Cкилл: " Margin="5,5,2,5"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1">
+                <TextBlock Text="{Binding CurrentTime, Converter={StaticResource timeConverter}}" Margin="2,5,5,5"/>
+                <Slider Value="{Binding SimulationSpeed}" Minimum="1" Maximum="5000" Margin="2,5,5,5"/>
+                <ComboBox ItemsSource="{Binding Skills}" DisplayMemberPath="SkillName" SelectedItem="{Binding SelectedSkill}" Margin="5,5,5,2" IsEditable="True"/>
 
-        <WrapPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="5">
-            <Button Content="Start" Command="{Binding StartSimulation}" Margin="2" Padding="5"/>
+                <StackPanel Orientation="Horizontal">
+                    <Button Command="{Binding AddSkill}" Margin="5,1">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Content" Value="{Binding AddSkillBtnContent}"/>
+                                <Style.Triggers>
+                                    <Trigger Property="Content" Value="">
+                                        <Setter Property="Visibility" Value="Hidden"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                    <Button Content="Удалить скилл" Command="{Binding DeleteSkill}" Margin="5,1"/>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+
+        <ContentControl prism:RegionManager.RegionName="SkillInfoRegion" DockPanel.Dock="Top"/>
+
+        <WrapPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="5" DockPanel.Dock="Bottom">
+            <Button Content="Start" Command="{Binding StartSimulation}" Margin="2" Padding="5" IsEnabled="{Binding BtnStartSimulationEnabled}"/>
             <Button Content="Stop" Command="{Binding StopSimulation}" Margin="2" Padding="5"/>
         </WrapPanel>
         
-    </StackPanel>
+        <TextBox Text="{Binding MainStatisticsInfo}" Margin="5,2" IsReadOnly="True" TextWrapping="Wrap" ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+
+    </DockPanel>
 </UserControl>

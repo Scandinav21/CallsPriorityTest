@@ -287,29 +287,39 @@ namespace CallFlowCore.Services
             }
         }
 
-        public string GetStatistics(int currentTime, List<Skill> skills, bool showOperStat = false)
+        public string GetStatistics(int currentTime, List<Skill> skills, Skill loadStatisticsFromSkill = null, bool showBrief = false, bool showOperStat = false)
         {
             StringBuilder statistics = new StringBuilder();
             TimeConverter timeConverter = new TimeConverter();
 
             foreach (var skill in skills)
             {
+                if (loadStatisticsFromSkill != null && loadStatisticsFromSkill.SkillName != skill.SkillName)
+                    continue;
+
                 statistics.Append($"Statistics in skill {skill.SkillName}\n");
                 statistics.Append($"Offered calls \t{skill.statistic.CallsOffered}\n");
-                statistics.Append($"Abandoned calls \t{skill.statistic.AbandonedCalls}\n");
-                statistics.Append($"Calls answered \t{skill.statistic.CallAnswered}\n");
-                statistics.Append($"SLCalls \t\t{skill.statistic.SLCalls}\n");
+                statistics.Append($"Queue in skill \t{ skill.CallsInQueue.Count() }\n");
+
+                if (!showBrief)
+                {
+                    statistics.Append($"Abandoned calls \t{skill.statistic.AbandonedCalls}\n");
+                    statistics.Append($"Calls answered \t{skill.statistic.CallAnswered}\n");
+                    statistics.Append($"SLCalls \t\t{skill.statistic.SLCalls}\n");
+                }
 
                 if (skill.statistic.CallsOffered > 0)
                     statistics.Append($"SL \t\t{Math.Round(((1.0 * skill.statistic.SLCalls / skill.statistic.CallsOffered) * 100), 2)}%\n");
 
                 statistics.Append($"--------------------------------------\n");
 
-                statistics.Append($"Available operators \t{skill.Operators.Where(o => o.CurrentStatus == "Ready").Count()}\n");
-                statistics.Append($"Operator talking in skill \t{skill.ActiveCalls.Count()}\n");
-                statistics.Append($"Queue in skill \t\t{ skill.CallsInQueue.Count() }\n");
-                statistics.Append($"Longest call in queue \t {timeConverter.Convert(skill.CallsInQueue.Select(c => c.Duration).OrderByDescending(c => c).FirstOrDefault(), null, null, null)}\n");
-                statistics.Append($"--------------------------------------\n");
+                if (!showBrief)
+                {
+                    statistics.Append($"Available operators \t{skill.Operators.Where(o => o.CurrentStatus == "Ready").Count()}\n");
+                    statistics.Append($"Operator talking in skill \t{skill.ActiveCalls.Count()}\n");
+                    statistics.Append($"Longest call in queue \t {timeConverter.Convert(skill.CallsInQueue.Select(c => c.Duration).OrderByDescending(c => c).FirstOrDefault(), null, null, null)}\n");
+                    statistics.Append($"--------------------------------------\n");
+                }
 
                 if (showOperStat)
                 {
@@ -337,20 +347,24 @@ namespace CallFlowCore.Services
                 }
             }
 
-            foreach (var skill in skills)
-            {
-                statistics.Append($"-  HISTORICAL DATA {skill.SkillName} -\n");
-
-                foreach (var call in skill.HistoricalCalls)
+            if (!showBrief)
+                foreach (var skill in skills)
                 {
-                    //Console.WriteLine($"Call {call.CallID} int skill {skill.SkillName} was offered at {ConvertSecToHumanReadyFormat(call.CallOfferedTime)} and was answered at {ConvertSecToHumanReadyFormat(call.CallAnsweredTime)} with duration {ConvertSecToHumanReadyFormat(call.TalkFullDuration)}");
+                    if (loadStatisticsFromSkill != null && loadStatisticsFromSkill.SkillName != skill.SkillName)
+                        continue;
+
+                    statistics.Append($"-----HISTORICAL DATA {skill.SkillName}-----\n");
+
+                    foreach (var call in skill.HistoricalCalls)
+                    {
+                        statistics.Append($"Call {call.CallID} int skill {skill.SkillName} was offered at {timeConverter.Convert(call.CallOfferedTime, null, null, null)} and was answered at {timeConverter.Convert(call.CallAnsweredTime, null, null, null)} with duration {timeConverter.Convert(call.TalkFullDuration, null, null, null)}\n");
+                    }
+
+                    if (skill.statistic.Calls.Count > 0)
+                        statistics.Append($"Average Talk Time = { timeConverter.Convert(skill.statistic.Calls.Sum(c => c.Duration) / skill.statistic.Calls.Count, null, null, null) }\n");
+
+                    statistics.Append($"--------------------------------------\n");
                 }
-
-                if (skill.statistic.Calls.Count > 0)
-                    statistics.Append($"Average Talk Time = { timeConverter.Convert(skill.statistic.Calls.Sum(c => c.Duration) / skill.statistic.Calls.Count, null, null, null) }\n");
-
-                statistics.Append($"--------------------------------------\n");
-            }
 
             return statistics.ToString();
         }
@@ -387,6 +401,5 @@ namespace CallFlowCore.Services
             return newCollection;
         }
 
-        
-}
+    }
 }

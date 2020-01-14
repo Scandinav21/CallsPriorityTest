@@ -22,7 +22,7 @@ namespace CallFlowCore.Services
 
         void TryRaisePriority(Skill currentSkill, int maxWaitTimeBeforeRaisePrior, int raisedPrior);
 
-        string GetStatistics(int currentTime, List<Skill> skills, bool showOperStat = false);
+        string GetStatistics(int currentTime, List<Skill> skills, Skill loadStatisticsFromSkill = null, bool showBrief = false, bool showOperStat = false);
 
         Skill ResetSkill(Skill skill);
 

@@ -17,6 +17,9 @@ namespace CallFlowModel
         public (List<int>, List<int>) CallAllocation { get; set; }
         public Statistics statistic { get; set; }
         public int CallsAllocationInterval { get; set; }
+        public Dictionary<int, int> CallsDurationAllocation { get; set; }
+        public int MinTalkTimeDur { get; set; }
+        public int MaxTalkTimeDur { get; set; }
 
         public Skill(string name, List<Operator> opers, int priority, (List<int>, List<int>) callAlloc) : this()
         {
@@ -31,6 +34,8 @@ namespace CallFlowModel
             SkillName = "New skill";
             Priority = 5;
             CallsAllocationInterval = 900;
+            MinTalkTimeDur = 10;
+            MaxTalkTimeDur = 900;
 
             if (ActiveCalls == null)
                 ActiveCalls = new List<Call>();
@@ -43,11 +48,22 @@ namespace CallFlowModel
 
             if (HistoricalCalls == null)
                 HistoricalCalls = new List<Call>();
-        }
 
-        public void LoadNewCallsAllocation((List<int>, List<int>) alloc)
-        {
-            CallAllocation = alloc;
+            if (CallsDurationAllocation == null)
+                CallsDurationAllocation = new Dictionary<int, int>
+                {
+                    { 0, 0 },
+                    { 60, 0 },
+                    { 120, 0 },
+                    { 180, 0 },
+                    { 240, 0 },
+                    { 300, 0 },
+                    { 360, 0 },
+                    { 420, 0 },
+                    { 480, 0 },
+                    { 540, 0 },
+                    { 600, 0 }
+                };
         }
     }
 }

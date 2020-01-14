@@ -4,11 +4,9 @@ using CallFlowCore.Services;
 using CallFlowModel;
 using Prism.Commands;
 using Prism.Events;
-using Prism.Ioc;
 using Prism.Mvvm;
 using Prism.Regions;
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
@@ -33,7 +31,10 @@ namespace CallFlowModules.ViewModels
             get 
             {
                 if (selectedSkill != null)
+                {
                     AddSkillBtnContent = "Изменить выбранный скилл";
+                    DeleteSkill.RaiseCanExecuteChanged();
+                }
                 else
                     AddSkillBtnContent = "Добавить скилл";
 
@@ -48,6 +49,7 @@ namespace CallFlowModules.ViewModels
         public DelegateCommand AddSkill { get; set; }
         public DelegateCommand StartSimulation { get; set; }
         public DelegateCommand StopSimulation { get; set; }
+        public DelegateCommand DeleteSkill { get; set; }
 
         private int currentTime;
         public int CurrentTime
@@ -77,6 +79,13 @@ namespace CallFlowModules.ViewModels
             set { SetProperty(ref addSkillBtnContent, value); }
         }
 
+        private bool btnStartSimulationEnabled;
+        public bool BtnStartSimulationEnabled
+        {
+            get { return btnStartSimulationEnabled; }
+            set { SetProperty(ref btnStartSimulationEnabled, value); }
+        }
+
         ISkillServices skillServices;
 
         CancellationTokenSource cancellationToken;
@@ -87,7 +96,8 @@ namespace CallFlowModules.ViewModels
             skillServices = skillServ;
 
             AddSkill = new DelegateCommand(AddSkillExecute);
-            StartSimulation = new DelegateCommand(StartSimulationExecute);
+            StartSimulation = new DelegateCommand(StartSimulationExecute, CanStartSimulation);
+            DeleteSkill = new DelegateCommand(DeleteSkillExecute, CanDeleteSkill);
             StopSimulation = new DelegateCommand(StopSimulationExecute);
 
             AddSkillBtnContent = "Создать скилл";
@@ -95,19 +105,54 @@ namespace CallFlowModules.ViewModels
             ea.GetEvent<NewSkillMessage>().Subscribe(GetNewSkill);
 
             Skills = new ObservableCollection<Skill>();
+            Skills.CollectionChanged += Skills_CollectionChanged;
             CurrentTime = 0;
             SimulationSpeed = 1000;
+
+            BtnStartSimulationEnabled = true;
+        }
+
+        private void Skills_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            StartSimulation.RaiseCanExecuteChanged();
+            DeleteSkill.RaiseCanExecuteChanged();
         }
 
         #region Commands
 
+        private bool CanDeleteSkill()
+        {
+            if (Skills != null && Skills.Count > 0 && selectedSkill != null)
+                return true;
+            else
+                return false;
+        }
+
+        private void DeleteSkillExecute()
+        {
+            if(Skills != null && Skills.Count > 0)
+                Skills.Remove(SelectedSkill);
+        }
+
+        private bool CanStartSimulation()
+        {
+            if (Skills != null && Skills.Count > 0)
+                return true;
+            else
+                return false;
+        }
+
         private void StopSimulationExecute()
         {
+            AddSkillBtnContent = "Создать скилл";
+            BtnStartSimulationEnabled = true;
             cancellationToken.Cancel();
         }
 
         private async void StartSimulationExecute()
         {
+            AddSkillBtnContent = "";
+            BtnStartSimulationEnabled = false;
             cancellationToken = new CancellationTokenSource();
             await Task.Run(() => SimulationProcess(), cancellationToken.Token);
         }
@@ -133,7 +178,6 @@ namespace CallFlowModules.ViewModels
 
         private async void SimulationProcess()
         {
-            const int MaxPeriodTime = 86400;
             int periodSec = Skills[0].CallsAllocationInterval;
 
             CurrentTime = 0;
@@ -152,7 +196,18 @@ namespace CallFlowModules.ViewModels
                     //if (skill.SkillName == "SG_21")
                     //    TryRaisePriority(skill, 60, 2);
 
+                    //SG_50 if queue on skills SG_21, SG_22 > 0 then priority == 4
+                    //SG_21 if timewait on skill > 180 then call priority == 1
+
                     skillServices.CheckQueueInSkills(Skills.ToList(), CurrentTime);
+
+                    //Reload calls data
+                    if (currentTime == periodRequestData)
+                    {
+                        skill.CallAllocation = skillServices.GenerateCallsAllocation(skill.CallsDurationAllocation, skill.CallsAllocationInterval, skill.MinTalkTimeDur, skill.MaxTalkTimeDur);
+
+                        periodRequestData += periodSec;
+                    }
 
                     foreach (var call in skill.CallAllocation.Item1.Where(c => c == CurrentTime - (periodRequestData - periodSec)).ToList())
                     {
@@ -170,7 +225,11 @@ namespace CallFlowModules.ViewModels
                     }
                 }
 
-                MainStatisticsInfo = skillServices.GetStatistics(CurrentTime, Skills.ToList());
+                if (SelectedSkill != null)
+                    MainStatisticsInfo = skillServices.GetStatistics(CurrentTime, Skills.ToList(), SelectedSkill, false, true);
+                else
+                    MainStatisticsInfo = skillServices.GetStatistics(CurrentTime, Skills.ToList(), null, true);
+
                 await Task.Delay(SimulationSpeed);
                 CurrentTime++;
             }
@@ -180,7 +239,7 @@ namespace CallFlowModules.ViewModels
 
         private void GetNewSkill(Skill skill)
         {
-            if (skill != null)
+            if (skill != null && Skills != null)
             {
                 if (Skills.Select(s => s.SkillName).Where(sn => sn == skill.SkillName).Count() > 0)
                     Skills.Remove(skills.Select(s => s).Where(s => s.SkillName == skill.SkillName).FirstOrDefault());

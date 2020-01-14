@@ -8,8 +8,7 @@ using Prism.Regions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Windows;
 
 namespace CallFlowModules.ViewModels
 {
@@ -83,24 +82,6 @@ namespace CallFlowModules.ViewModels
 
         public SkillInfoViewModel(IEventAggregator ea, ISkillServices ss)
         {
-            CallsDurationAllocation = new Dictionary<int, int>
-                {
-                    { 0, 0 },
-                    { 60, 0 },
-                    { 120, 0 },
-                    { 180, 0 },
-                    { 240, 0 },
-                    { 300, 0 },
-                    { 360, 0 },
-                    { 420, 0 },
-                    { 480, 0 },
-                    { 540, 0 },
-                    { 600, 0 }
-                };
-
-            MinCallDuration = 10;
-            MaxCallDuration = 900;
-
             AddSkillToList = new DelegateCommand(AddSkillToListExecute);
 
             eventAggregator = ea;
@@ -109,8 +90,19 @@ namespace CallFlowModules.ViewModels
 
         private void AddSkillToListExecute()
         {
+            if(skill == null || skill.SkillName == "" || skill.Priority < 1 || operatorsCountInSKill < 1 || operGenStartIndex < 0
+                || skill.CallsAllocationInterval < 1 || minCallDuration < 0 || maxCallDuration < 1 || maxCallDuration <= minCallDuration)
+            {
+                MessageBox.Show("Проверьте корректность данных", "Ошибка ввода данных!", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
             CurrentSkill.Operators = skillServices.GenerateOperators(OperatorsCountInSkill, OperatorsCountStartIndex);
             CurrentSkill.CallAllocation = skillServices.GenerateCallsAllocation(CallsDurationAllocation, CurrentSkill.CallsAllocationInterval, MinCallDuration, MaxCallDuration);
+            CurrentSkill.CallsDurationAllocation = CallsDurationAllocation;
+            CurrentSkill.MinTalkTimeDur = MinCallDuration;
+            CurrentSkill.MaxTalkTimeDur = MaxCallDuration;
+
             eventAggregator.GetEvent<NewSkillMessage>().Publish(CurrentSkill);
         }
 
@@ -121,6 +113,9 @@ namespace CallFlowModules.ViewModels
             if (param != null && (bool)param)
             {
                 CurrentSkill = new Skill();
+                CallsDurationAllocation = CurrentSkill.CallsDurationAllocation;
+                MinCallDuration = CurrentSkill.MinTalkTimeDur;
+                MaxCallDuration = CurrentSkill.MaxTalkTimeDur;
                 AddSkillToListBtnContent = "Добавить скилл в список";
             }
 
@@ -128,6 +123,9 @@ namespace CallFlowModules.ViewModels
             if (param != null)
             {
                 CurrentSkill = (Skill)param;
+                CallsDurationAllocation = CurrentSkill.CallsDurationAllocation;
+                MinCallDuration = CurrentSkill.MinTalkTimeDur;
+                MaxCallDuration = CurrentSkill.MaxTalkTimeDur;
                 AddSkillToListBtnContent = "Сохранить изменения";
             }
         }
