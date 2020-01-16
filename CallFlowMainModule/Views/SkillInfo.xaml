@@ -10,7 +10,7 @@
              Height="Auto" Width="600"
              xmlns:prism="http://prismlibrary.com/"
              prism:ViewModelLocator.AutoWireViewModel="True">
-    
+
     <UserControl.Resources>
         <ResourceDictionary>
             <core:TestConverter x:Key="testConverter" />
@@ -21,7 +21,7 @@
             </Style>
         </ResourceDictionary>
     </UserControl.Resources>
-    
+
     <StackPanel>
         <Grid>
             <Grid.ColumnDefinitions>
@@ -45,19 +45,25 @@
                 <TextBox Text="{Binding CurrentSkill.CallsAllocationInterval}" Margin="5,1,5,5"/>
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="4*"/>
-                        <ColumnDefinition/>
+                        <ColumnDefinition Width="5*"/>
+                        <ColumnDefinition Width="19*"/>
+                        <ColumnDefinition Width="6*"/>
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
                         <RowDefinition/>
                         <RowDefinition/>
+                        <RowDefinition/>
+                        <RowDefinition/>
+                        <RowDefinition/>
                     </Grid.RowDefinitions>
 
-                    <TextBlock Text="Минимальная длительность разговора:" Margin="5,5,5,1" />
-                    <xctk:IntegerUpDown Value="{Binding MinCallDuration}" Minimum="0" Maximum="900" Margin="5,1,5,5" Grid.Column="1"/>
+                    <TextBlock Text="Минимальная длительность разговора:" Margin="5,5,5,1" Grid.ColumnSpan="2" />
+                    <xctk:IntegerUpDown Value="{Binding MinCallDuration}" Minimum="0" Maximum="900" Margin="5,1,5,5" Grid.Column="2"/>
 
-                    <TextBlock Text="Максимальная длительность разговора:" Margin="5,5,5,1" Grid.Row="1"/>
-                    <xctk:IntegerUpDown Value="{Binding MaxCallDuration}" Minimum="0" Maximum="900" Margin="5,1,5,5" Grid.Row="1" Grid.Column="1"/>
+                    <TextBlock Text="Максимальная длительность разговора:" Margin="5,5,5,1" Grid.Row="1" Grid.ColumnSpan="2"/>
+                    <xctk:IntegerUpDown Value="{Binding MaxCallDuration}" Minimum="0" Maximum="900" Margin="5,1,5,5" Grid.Row="1" Grid.Column="2"/>
+                    <TextBlock Text="Правила приоритизации:" Margin="5" Grid.Row="3" Grid.ColumnSpan="3"/>
+                    <TextBox Text="{Binding PriorityRules}" AcceptsReturn="True" TextWrapping="Wrap" Margin="5,5,5,1" Grid.Row="4" Grid.ColumnSpan="3"/>
                 </Grid>
             </StackPanel>
             <Border BorderThickness="1" BorderBrush="Black" Margin="5" Grid.Column="1">

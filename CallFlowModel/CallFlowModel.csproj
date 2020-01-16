@@ -41,6 +41,7 @@
   <ItemGroup>
     <Compile Include="Call.cs" />
     <Compile Include="Operator.cs" />
+    <Compile Include="PriorityConditions.cs" />
     <Compile Include="Skill.cs" />
     <Compile Include="Statistics.cs" />
   </ItemGroup>

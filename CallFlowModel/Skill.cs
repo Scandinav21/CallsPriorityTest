@@ -20,6 +20,8 @@ namespace CallFlowModel
         public Dictionary<int, int> CallsDurationAllocation { get; set; }
         public int MinTalkTimeDur { get; set; }
         public int MaxTalkTimeDur { get; set; }
+        public PriorityConditions PriorCondition { get; set; }
+        public string PriorityConditionString { get; set; }
 
         public Skill(string name, List<Operator> opers, int priority, (List<int>, List<int>) callAlloc) : this()
         {
@@ -64,6 +66,9 @@ namespace CallFlowModel
                     { 540, 0 },
                     { 600, 0 }
                 };
+
+            if (PriorCondition == null)
+                PriorCondition = new PriorityConditions();
         }
     }
 }

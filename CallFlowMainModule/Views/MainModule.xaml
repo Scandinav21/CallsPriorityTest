@@ -7,7 +7,7 @@
              xmlns:core="clr-namespace:CallFlowCore.Converters;assembly=CallFlowCore"
              xmlns:i="clr-namespace:System.Windows.Interactivity;assembly=System.Windows.Interactivity"
              mc:Ignorable="d" 
-             Height="Auto" Width="Auto" MinWidth="600" MinHeight="600" MaxHeight="800" MaxWidth="800"
+             Height="Auto" Width="Auto" MinWidth="650" MinHeight="600" MaxHeight="800" MaxWidth="800"
              xmlns:prism="http://prismlibrary.com/"
              prism:ViewModelLocator.AutoWireViewModel="True" ScrollViewer.VerticalScrollBarVisibility="Auto">
     <UserControl.Resources>
@@ -30,7 +30,13 @@
             <StackPanel Grid.Column="1">
                 <TextBlock Text="{Binding CurrentTime, Converter={StaticResource timeConverter}}" Margin="2,5,5,5"/>
                 <Slider Value="{Binding SimulationSpeed}" Minimum="1" Maximum="5000" Margin="2,5,5,5"/>
-                <ComboBox ItemsSource="{Binding Skills}" DisplayMemberPath="SkillName" SelectedItem="{Binding SelectedSkill}" Margin="5,5,5,2" IsEditable="True"/>
+                <ComboBox ItemsSource="{Binding Skills}" DisplayMemberPath="SkillName" SelectedItem="{Binding SelectedSkill}" Margin="5,5,5,2" IsEditable="True">
+                    <i:Interaction.Triggers>
+                        <i:EventTrigger EventName="SelectionChanged">
+                            <i:InvokeCommandAction Command="{Binding SkillSelectedChanged}" />
+                        </i:EventTrigger>
+                    </i:Interaction.Triggers>
+                </ComboBox>
 
                 <StackPanel Orientation="Horizontal">
                     <Button Command="{Binding AddSkill}" Margin="5,1">

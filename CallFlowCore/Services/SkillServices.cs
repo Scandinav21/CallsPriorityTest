@@ -5,6 +5,8 @@ using System.Linq;
 using System.Text;
 using CallFlowCore.Converters;
 using System.Collections.ObjectModel;
+using System.Text.RegularExpressions;
+using System.Windows;
 
 namespace CallFlowCore.Services
 {
@@ -72,7 +74,7 @@ namespace CallFlowCore.Services
             Random random = new Random();
 
             //Добавляем звонок оператору
-            oper.call = new Call(random.Next(1, 9999), currentSkill.CallAllocation.Item2[currentSkill.CallAllocation.Item1.IndexOf(currentTime)], currentTime, currentSkill.Priority);
+            oper.call = new Call(GetFreeCallID(skills), currentSkill.CallAllocation.Item2[currentSkill.CallAllocation.Item1.IndexOf(currentTime)], currentTime, currentSkill.Priority);
 
             oper.call.CallAnsweredTime = currentTime;
 
@@ -240,10 +242,39 @@ namespace CallFlowCore.Services
 
         public Operator GetFreeOperator(List<Operator> opers)
         {
-            foreach (var oper in opers)
+            if(opers.Select(o => o).Where(o => o.CurrentStatus == "Ready").Count() > 0)
             {
-                if (oper.CurrentStatus == "Ready")
-                    return oper;
+                Random random = new Random();
+                Regex regex = new Regex(@"\d+");
+                Dictionary<string, int> operatorsDict = new Dictionary<string, int>();
+
+                try
+                {
+                    //Random operator
+                    foreach (var oper in opers)
+                    {
+                        if (regex.IsMatch(oper.Name))
+                            operatorsDict.Add(oper.Name, Convert.ToInt32(regex.Match(oper.Name).Value));
+                    }
+
+                    int maxTries = 1000;
+                    int currentTry = 0;
+
+                    while (currentTry < maxTries)
+                    {
+                        int randomInt = random.Next(operatorsDict.Values.Min() - 1, operatorsDict.Values.Max());
+                        Operator freeOper = opers[randomInt];
+                        if (freeOper.CurrentStatus == "Ready")
+                            return freeOper;
+
+                        currentTry++;
+                    }
+                }
+                catch (Exception e)
+                {
+                    MessageBox.Show("Ошибка во время поиска свободного оператора\n" + e.Message, "Ошибка получения оператора", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return null;
+                }
             }
 
             return null;
@@ -277,13 +308,52 @@ namespace CallFlowCore.Services
             }
         }
 
-        public void TryRaisePriority(Skill currentSkill, int maxWaitTimeBeforeRaisePrior, int raisedPrior)
+        public void TryRaiseCallPriority(Skill currentSkill, int maxWaitTimeBeforeRaisePrior, int raisedPrior)
         {
             List<Call> callRaisePriority = currentSkill.CallsInQueue.Select(c => c).Where(c => c.Duration > maxWaitTimeBeforeRaisePrior).ToList();
 
             foreach (var call in callRaisePriority)
             {
                 call.CallPriority = raisedPrior;
+            }
+        }
+
+        public void TryRaiseSkillPriority(ObservableCollection<Skill> skills, Skill currentSkill)
+        {
+            if(currentSkill.PriorCondition != null && currentSkill.PriorCondition.priorityWhenQ != 0 && 
+                (currentSkill.PriorCondition.queueMultiple || currentSkill.PriorCondition.queueSingle) && 
+                currentSkill.PriorCondition.queueVal > 0 && currentSkill.PriorCondition.skills != null && 
+                currentSkill.PriorCondition.skills.Count > 0)
+            {
+                //Если очередь только на каком-либо одном скилле
+                if(currentSkill.PriorCondition.queueSingle)
+                {
+                    foreach (var skill in currentSkill.PriorCondition.skills)
+                    {
+                        if (skills.Select(s => s)
+                            .Where(s => s.SkillName == skill && s.CallsInQueue.Count() > currentSkill.PriorCondition.queueVal && 
+                            s.SkillName != currentSkill.SkillName).Count() > 0)
+                        {
+                            TryRaiseCallPriority(currentSkill, 0, currentSkill.PriorCondition.priorityWhenQ);
+                            return;
+                        }
+                    }
+                }
+
+                //Если очередь должна быть на всех скиллах списка
+                if(currentSkill.PriorCondition.queueMultiple)
+                {
+                    int skillsFetched = 0;
+
+                    foreach (var skill in skills)
+                    {
+                        if (currentSkill.PriorCondition.skills.Contains(skill.SkillName))
+                            skillsFetched++;
+                    }
+
+                    if (skillsFetched == currentSkill.PriorCondition.skills.Count)
+                        TryRaiseCallPriority(currentSkill, 0, currentSkill.PriorCondition.priorityWhenQ);
+                }
             }
         }
 
@@ -357,7 +427,7 @@ namespace CallFlowCore.Services
 
                     foreach (var call in skill.HistoricalCalls)
                     {
-                        statistics.Append($"Call {call.CallID} int skill {skill.SkillName} was offered at {timeConverter.Convert(call.CallOfferedTime, null, null, null)} and was answered at {timeConverter.Convert(call.CallAnsweredTime, null, null, null)} with duration {timeConverter.Convert(call.TalkFullDuration, null, null, null)}\n");
+                        statistics.Append($"Call {call.CallID} in skill {skill.SkillName} was offered at {timeConverter.Convert(call.CallOfferedTime, null, null, null)} and was answered at {timeConverter.Convert(call.CallAnsweredTime, null, null, null)} with duration {timeConverter.Convert(call.TalkFullDuration, null, null, null)} and priority {call.CallPriority}\n");
                     }
 
                     if (skill.statistic.Calls.Count > 0)
@@ -371,15 +441,25 @@ namespace CallFlowCore.Services
 
         public Skill ResetSkill(Skill skill)
         {
-            Skill newSkill = new Skill(skill.SkillName, skill.Operators, skill.Priority, skill.CallAllocation);
-            newSkill.CallsAllocationInterval = skill.CallsAllocationInterval;
+            //Skill newSkill = new Skill(skill.SkillName, skill.Operators, skill.Priority, skill.CallAllocation);
+            //newSkill.PriorCondition = skill.PriorCondition;
+            //newSkill.CallsAllocationInterval = skill.CallsAllocationInterval;
+            //newSkill.CallsDurationAllocation = skill.CallsDurationAllocation;
+            //newSkill.MaxTalkTimeDur = skill.MaxTalkTimeDur;
+            //newSkill.MinTalkTimeDur = skill.MinTalkTimeDur;
+            //newSkill.CallsAllocationInterval = skill.CallsAllocationInterval;
 
-            for (int i = 0; i < newSkill.Operators.Count; i++)
+            skill.ActiveCalls = new List<Call>();
+            skill.CallsInQueue = new List<Call>();
+            skill.HistoricalCalls = new List<Call>();
+            skill.statistic = new Statistics();
+
+            for (int i = 0; i < skill.Operators.Count; i++)
             {
-                newSkill.Operators[i] = ResetOperator(newSkill.Operators[i]);
+                skill.Operators[i] = ResetOperator(skill.Operators[i]);
             }
 
-            return newSkill;
+            return skill;
         }
 
         private Operator ResetOperator(Operator oper)
@@ -399,6 +479,151 @@ namespace CallFlowCore.Services
             }
 
             return newCollection;
+        }
+
+
+        public PriorityConditions GetPriorityConditions(string query)
+        {
+            PriorityConditions priorityConditions = new PriorityConditions();
+
+            string regexp;
+            try
+            {
+                //Проверяем есть ли условие по очереди на скиллах
+                if ((bool)CheckRegexIsMatch(query, @"queue \w+"))
+                {
+                    //Проверяем очередь только на одном из скиллов
+                    if ((bool)CheckRegexIsMatch(query, @"queue in \(\w+"))
+                        priorityConditions.queueSingle = true;
+
+                    //Проверяем очередь на всех скиллах списка
+                    if ((bool)CheckRegexIsMatch(query, @"queue in each \(\w+"))
+                        priorityConditions.queueMultiple = true;
+
+                    //Получаем список скиллов
+                    regexp = @"\((\w+\,{0,})+\)";
+                    if ((bool)CheckRegexIsMatch(query, regexp))
+                    {
+                        string skillsStr = (string)CheckRegexIsMatch(query, regexp, true);
+                        priorityConditions.skills = ParseSkills(skillsStr, ',', new char[] { '(', ')' });
+                    }
+
+                    //Получаем знак сравнения для очереди
+                    regexp = @"\) <|>|<=|>=|== \d+";
+                    if ((bool)CheckRegexIsMatch(query, regexp))
+                        priorityConditions.signQueue = (string)CheckRegexIsMatch(query, regexp, true);
+
+                    //Получаем значение очереди
+                    regexp = @"\) .{1,2} \d+";
+                    if ((bool)CheckRegexIsMatch(query, regexp))
+                    {
+                        priorityConditions.queueVal = GetIntAfterSign(query, regexp);
+                    }
+
+                    regexp = @"queue.*\) (<|>|<=|>=|=) \d+ then priority = \d+";
+                    if ((bool)CheckRegexIsMatch(query, regexp))
+                    {
+                        priorityConditions.priorityWhenQ = GetIntAfterSign(query, regexp);
+                    }
+                }
+
+                if ((bool)CheckRegexIsMatch(query, @"timewait > \d+"))
+                {
+                    priorityConditions.timeWait = true;
+
+                    regexp = @"timewait <|>|<=|>=|== \d+";
+                    if ((bool)CheckRegexIsMatch(query, regexp))
+                        priorityConditions.signTimeWait = (string)CheckRegexIsMatch(query, regexp, true);
+
+                    regexp = @"timewait .{1,2} \d+";
+                    if ((bool)CheckRegexIsMatch(query, regexp))
+                    {
+                        priorityConditions.timeWaitVal = GetIntAfterSign(query, regexp);
+                    }
+
+                    regexp = @"timeWait.(<|>|<=|>=|=) \d+ then priority = \d+";
+                    if ((bool)CheckRegexIsMatch(query, regexp))
+                    {
+                        priorityConditions.priorityWhenTimeW = GetIntAfterSign(query, regexp);
+                    }
+                }
+
+                regexp = @" and ";
+                if ((bool)CheckRegexIsMatch(query, regexp))
+                    priorityConditions.unitCondition = 1;
+
+                regexp = @" or ";
+                if ((bool)CheckRegexIsMatch(query, regexp))
+                    priorityConditions.unitCondition = -1;
+            }
+            catch(Exception e)
+            {
+                MessageBox.Show("Не удалось распарсить запрос, описывающий приоритизацию\n" + e.Message, "Ошибка приоритизации", MessageBoxButton.OK, MessageBoxImage.Error);
+                return null;
+            }
+
+            return priorityConditions;
+        }
+
+        private object CheckRegexIsMatch(string str, string regexStr, bool getMatchVal = false)
+        {
+            Regex regex = new Regex(regexStr, RegexOptions.IgnoreCase);
+
+            if (!getMatchVal)
+                return regex.IsMatch(str);
+            else
+                if (getMatchVal)
+                return regex.Match(str).Value;
+            else
+                return false;
+        }
+
+        private int GetIntAfterSign(string str, string regexStr)
+        {
+            int result = -1;
+
+            Regex regex = new Regex(regexStr, RegexOptions.IgnoreCase);
+
+            string tempVal = regex.Match(str).Value;
+            IEnumerable<char> tempValArr = tempVal.Reverse();
+            tempVal = "";
+
+            foreach (var item in tempValArr)
+            {
+                tempVal += item.ToString();
+            }
+
+            regex = new Regex(@"^\d+");
+            tempValArr = regex.Match(tempVal).Value.Reverse();
+
+            tempVal = "";
+
+            foreach (var item in tempValArr)
+            {
+                tempVal += item.ToString();
+            }
+
+            Int32.TryParse(tempVal, out result);
+
+
+            return result;
+        }
+
+        private List<string> ParseSkills(string skills, char separator, char[] curves)
+        {
+            List<string> skillsList = new List<string>();
+
+            skills = skills.Trim(curves[0]);
+            skills = skills.Trim(curves[1]);
+
+            string[] skillsSplitted = skills.Split(separator);
+
+            foreach (var skill in skillsSplitted)
+            {
+                skillsList.Add(skill);
+            }
+
+            return skillsList;
         }
 
     }

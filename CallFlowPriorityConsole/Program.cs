@@ -245,7 +245,7 @@ namespace CallFlowPriorityConsole
             Random random = new Random();
 
             //Добавляем звонок оператору
-            oper.call = new Call(random.Next(1, 9999), currentSkill.CallAllocation.Item2[currentSkill.CallAllocation.Item1.IndexOf(currentTime)], currentTime, currentSkill.Priority);
+            oper.call = new Call(GetFreeCallID(skills), currentSkill.CallAllocation.Item2[currentSkill.CallAllocation.Item1.IndexOf(currentTime)], currentTime, currentSkill.Priority);
 
             oper.call.CallAnsweredTime = currentTime;
 
@@ -330,7 +330,7 @@ namespace CallFlowPriorityConsole
 
             while (true)
             {
-                newCallID = random.Next(1, 999999);
+                newCallID = random.Next(1000000000, 2147483646);
 
                 var ActiveCalls = skills.Select(s => s.ActiveCalls).Select(lc => lc.Select(c => c).Where(c => c.CallID == newCallID));
                 var CallsInQueue = skills.Select(s => s.CallsInQueue).Select(lc => lc.Select(c => c).Where(c => c.CallID == newCallID));

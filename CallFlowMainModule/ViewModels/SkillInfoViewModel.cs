@@ -75,6 +75,13 @@ namespace CallFlowModules.ViewModels
             set { SetProperty(ref addSkillToListBtnContent, value); }
         }
 
+        private string priorityRules;
+        public string PriorityRules
+        {
+            get { return priorityRules; }
+            set { SetProperty(ref priorityRules, value); }
+        }
+
         public DelegateCommand AddSkillToList { get; set; }
 
         IEventAggregator eventAggregator;
@@ -103,6 +110,12 @@ namespace CallFlowModules.ViewModels
             CurrentSkill.MinTalkTimeDur = MinCallDuration;
             CurrentSkill.MaxTalkTimeDur = MaxCallDuration;
 
+            if (PriorityRules != null && PriorityRules.Length > 0)
+            {
+                CurrentSkill.PriorCondition = skillServices.GetPriorityConditions(PriorityRules);
+                CurrentSkill.PriorityConditionString = PriorityRules;
+            }
+
             eventAggregator.GetEvent<NewSkillMessage>().Publish(CurrentSkill);
         }
 
@@ -127,6 +140,8 @@ namespace CallFlowModules.ViewModels
                 MinCallDuration = CurrentSkill.MinTalkTimeDur;
                 MaxCallDuration = CurrentSkill.MaxTalkTimeDur;
                 AddSkillToListBtnContent = "Сохранить изменения";
+                PriorityRules = CurrentSkill.PriorityConditionString;
+                OperatorsCountInSkill = CurrentSkill.Operators.Count;
             }
         }
 

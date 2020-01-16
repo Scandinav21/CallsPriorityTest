@@ -50,6 +50,7 @@ namespace CallFlowModules.ViewModels
         public DelegateCommand StartSimulation { get; set; }
         public DelegateCommand StopSimulation { get; set; }
         public DelegateCommand DeleteSkill { get; set; }
+        public DelegateCommand SkillSelectedChanged { get; set; }
 
         private int currentTime;
         public int CurrentTime
@@ -99,6 +100,7 @@ namespace CallFlowModules.ViewModels
             StartSimulation = new DelegateCommand(StartSimulationExecute, CanStartSimulation);
             DeleteSkill = new DelegateCommand(DeleteSkillExecute, CanDeleteSkill);
             StopSimulation = new DelegateCommand(StopSimulationExecute);
+            SkillSelectedChanged = new DelegateCommand(SkillSelectedChangedExecute);
 
             AddSkillBtnContent = "Создать скилл";
 
@@ -119,6 +121,12 @@ namespace CallFlowModules.ViewModels
         }
 
         #region Commands
+
+        private void SkillSelectedChangedExecute()
+        {
+            if (cancellationToken != null && cancellationToken.Token.IsCancellationRequested && SelectedSkill != null)
+                MainStatisticsInfo = skillServices.GetStatistics(CurrentTime, Skills.ToList(), SelectedSkill);
+        }
 
         private bool CanDeleteSkill()
         {
@@ -154,6 +162,7 @@ namespace CallFlowModules.ViewModels
             AddSkillBtnContent = "";
             BtnStartSimulationEnabled = false;
             cancellationToken = new CancellationTokenSource();
+            Skills = skillServices.ResetSkills(Skills);
             await Task.Run(() => SimulationProcess(), cancellationToken.Token);
         }
 
@@ -175,7 +184,6 @@ namespace CallFlowModules.ViewModels
 
         #endregion
 
-
         private async void SimulationProcess()
         {
             int periodSec = Skills[0].CallsAllocationInterval;
@@ -193,11 +201,11 @@ namespace CallFlowModules.ViewModels
                     //Обновляем время в операторах и скиллах
                     skill.statistic.AbandonedCalls += skillServices.UpdateSkillData(Skills.ToList(), skill);
 
-                    //if (skill.SkillName == "SG_21")
-                    //    TryRaisePriority(skill, 60, 2);
+                    if (skill.PriorCondition.queueMultiple || skill.PriorCondition.queueSingle)
+                        skillServices.TryRaiseSkillPriority(Skills, skill);
 
-                    //SG_50 if queue on skills SG_21, SG_22 > 0 then priority == 4
-                    //SG_21 if timewait on skill > 180 then call priority == 1
+                    if (skill.PriorCondition.timeWait && skill.PriorCondition.timeWaitVal > 0)
+                        skillServices.TryRaiseCallPriority(skill, skill.PriorCondition.timeWaitVal, skill.PriorCondition.priorityWhenTimeW);
 
                     skillServices.CheckQueueInSkills(Skills.ToList(), CurrentTime);
 
@@ -233,8 +241,6 @@ namespace CallFlowModules.ViewModels
                 await Task.Delay(SimulationSpeed);
                 CurrentTime++;
             }
-
-            Skills = skillServices.ResetSkills(Skills);
         }
 
         private void GetNewSkill(Skill skill)

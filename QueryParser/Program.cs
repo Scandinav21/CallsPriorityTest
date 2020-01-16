@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace QueryParser
 {
@@ -17,19 +15,7 @@ namespace QueryParser
             //string query = "if queue in (skill1,skill2,skill3,skill4) > 50 then priority = 4";
             string query = "if queue in each (skill1,skill2) > 50 then priority = 4 or timeWait > 3 then priority = 2";
 
-            bool queueSingle = false;
-            bool queueMultiple = false;
-            bool timeWait = false;
-            string signTimeWait = "";
-            string signQueue = "";
-            int queueVal = 0;
-            int timeWaitVal = 0;
-            int priorityWhenQ = 0;
-            int priorityWhenTimeW = 0;
-            //1 and 
-            //-1 or
-            int unitCondition = 0;
-            List<string> skills = new List<string>();
+            PriorityConditions priorityConditions = new PriorityConditions();
 
             string regexp;
 
@@ -38,75 +24,77 @@ namespace QueryParser
             {
                 //Проверяем очередь только на одном из скиллов
                 if((bool)CheckRegexIsMatch(query, @"queue in \(\w+"))
-                    queueSingle = true;
+                    priorityConditions.queueSingle = true;
 
                 //Проверяем очередь на всех скиллах списка
                 if ((bool)CheckRegexIsMatch(query, @"queue in each \(\w+"))
-                    queueMultiple = true;
+                    priorityConditions.queueMultiple = true;
 
                 //Получаем список скиллов
                 regexp = @"\((\w+\,{0,})+\)";
                 if ((bool)CheckRegexIsMatch(query, regexp))
                 {
                     string skillsStr = (string)CheckRegexIsMatch(query, regexp, true);
-                    skills = ParseSkills(skillsStr, ',', new char[] { '(', ')'});
+                    priorityConditions.skills = ParseSkills(skillsStr, ',', new char[] { '(', ')'});
                 }
 
                 //Получаем знак сравнения для очереди
                 regexp = @"\) <|>|<=|>=|== \d+";
                 if ((bool)CheckRegexIsMatch(query, regexp))
-                    signQueue = (string)CheckRegexIsMatch(query, regexp, true);
+                    priorityConditions.signQueue = (string)CheckRegexIsMatch(query, regexp, true);
 
                 //Получаем значение очереди
                 regexp = @"\) .{1,2} \d+";
                 if ((bool)CheckRegexIsMatch(query, regexp))
                 {
-                    queueVal = GetIntAfterSign(query, regexp);
+                    priorityConditions.queueVal = GetIntAfterSign(query, regexp);
                 }
 
                 regexp = @"queue.*\) (<|>|<=|>=|=) \d+ then priority = \d+";
                 if ((bool)CheckRegexIsMatch(query, regexp))
                 {
-                    priorityWhenQ = GetIntAfterSign(query, regexp);
+                    priorityConditions.priorityWhenQ = GetIntAfterSign(query, regexp);
                 }
             }
 
             if ((bool)CheckRegexIsMatch(query, @"timewait > \d+"))
             {
-                timeWait = true;
+                priorityConditions.timeWait = true;
 
                 regexp = @"timewait <|>|<=|>=|== \d+";
                 if ((bool)CheckRegexIsMatch(query, regexp))
-                    signTimeWait = (string)CheckRegexIsMatch(query, regexp, true);
+                    priorityConditions.signTimeWait = (string)CheckRegexIsMatch(query, regexp, true);
 
                 regexp = @"timewait .{1,2} \d+";
                 if ((bool)CheckRegexIsMatch(query, regexp))
                 {
-                    timeWaitVal = GetIntAfterSign(query, regexp);
+                    priorityConditions.timeWaitVal = GetIntAfterSign(query, regexp);
                 }
 
                 regexp = @"timeWait.(<|>|<=|>=|=) \d+ then priority = \d+";
                 if ((bool)CheckRegexIsMatch(query, regexp))
                 {
-                    priorityWhenTimeW = GetIntAfterSign(query, regexp);
+                    priorityConditions.priorityWhenTimeW = GetIntAfterSign(query, regexp);
                 }
             }
 
             regexp = @" and ";
             if ((bool)CheckRegexIsMatch(query, regexp))
-                unitCondition = 1;
+                priorityConditions.unitCondition = 1;
 
             regexp = @" or ";
             if ((bool)CheckRegexIsMatch(query, regexp))
-                unitCondition = -1;
+                priorityConditions.unitCondition = -1;
 
-            if (!queueSingle && queueMultiple && timeWait && signTimeWait == ">" && signQueue == ">" && queueVal == 50 &&
-                timeWaitVal == 3 && priorityWhenQ == 4 && skills.Count == 2 && unitCondition == -1 && priorityWhenTimeW == 2
+            if (!priorityConditions.queueSingle && priorityConditions.queueMultiple && priorityConditions.timeWait && priorityConditions.signTimeWait == ">" && priorityConditions.signQueue == ">" &&
+                priorityConditions.queueVal == 50 &&
+                priorityConditions.timeWaitVal == 3 && priorityConditions.priorityWhenQ == 4 && priorityConditions.skills.Count == 2 && priorityConditions.unitCondition == -1 && 
+                priorityConditions.priorityWhenTimeW == 2
                 )
             {
                 Console.WriteLine("Success");
 
-                foreach (var skill in skills)
+                foreach (var skill in priorityConditions.skills)
                 {
                     Console.WriteLine(skill);
                 }
@@ -174,6 +162,23 @@ namespace QueryParser
             }
 
             return skillsList;
+        }
+
+        public class PriorityConditions
+        {
+            public bool queueSingle = false;
+            public bool queueMultiple = false;
+            public int queueVal = 0;
+            public bool timeWait = false;
+            public int timeWaitVal = 0;
+            public string signTimeWait = "";
+            public string signQueue = "";
+            public int priorityWhenQ = 0;
+            public int priorityWhenTimeW = 0;
+            //1 and 
+            //-1 or
+            public int unitCondition = 0;
+            public List<string> skills = new List<string>();
         }
     }
 }
