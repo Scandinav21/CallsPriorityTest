@@ -7,6 +7,7 @@ using CallFlowCore.Converters;
 using System.Collections.ObjectModel;
 using System.Text.RegularExpressions;
 using System.Windows;
+using System.Threading.Tasks;
 
 namespace CallFlowCore.Services
 {
@@ -16,27 +17,30 @@ namespace CallFlowCore.Services
         {
             List<Operator> operators = new List<Operator>();
 
+            if (startIndex < 1)
+            {
+                MessageBox.Show("Введите корректный индекс первого оператора > 0", "Ошибка начального индекса оператора", MessageBoxButton.OK, MessageBoxImage.Error);
+                return null;
+            }
+
             for (int i = startIndex; i < countOfOperators + startIndex; i++)
-                operators.Add(new Operator($"Operator{i + 1}"));
+                operators.Add(new Operator($"Operator{i}"));
 
             return operators;
         }
 
-        public (List<int>, List<int>) GenerateCallsAllocation(Dictionary<int, int> callDurationAllocation, int intervalSeconds, int minTalkTimePer, int maxTalkTimePer)
+        public async Task<(List<int>, List<int>)> GenerateCallsAllocation(Dictionary<int, int> callDurationAllocation, int startAllocationTime, int intervalSeconds, int minTalkTimePer, int maxTalkTimePer)
         {
             List<int> callsAllocation = new List<int>();
             List<int> callsTalkTimeAllocation = new List<int>();
 
+            await Task.Delay(100);
             Random randomSeconds = new Random();
 
             while (callDurationAllocation.Values.Select(v => v).Sum() > callsAllocation.Count())
             {
                 //Генерим время поступления вызова
-                int newCallOfferedTime = randomSeconds.Next(1, intervalSeconds);
-
-                ////Если вызов на такой секунде уже присутствует, то пропускаем добавление данного вызова в список
-                //if (callsAllocation.Contains(newCallOfferedTime))
-                //    continue;
+                int newCallOfferedTime = randomSeconds.Next(startAllocationTime, startAllocationTime + intervalSeconds);
 
                 //Генерим длительность вызова
                 int newCallDuration = randomSeconds.Next(minTalkTimePer, maxTalkTimePer);
@@ -56,13 +60,9 @@ namespace CallFlowCore.Services
                     callsAllocation.Add(newCallOfferedTime);
                     callsTalkTimeAllocation.Add(newCallDuration);
                 }
-            }
 
-            //callsTalkTimeAllocation.Sort();
-            //foreach (var call in callsTalkTimeAllocation)
-            //{
-            //    Console.WriteLine(call);
-            //}
+                await Task.Delay(10);
+            }
 
             callsAllocation.Sort();
 
@@ -71,8 +71,6 @@ namespace CallFlowCore.Services
 
         public void AnswerCall(Operator oper, List<Skill> skills, Skill currentSkill, int currentTime)
         {
-            Random random = new Random();
-
             //Добавляем звонок оператору
             oper.call = new Call(GetFreeCallID(skills), currentSkill.CallAllocation.Item2[currentSkill.CallAllocation.Item1.IndexOf(currentTime)], currentTime, currentSkill.Priority);
 
@@ -84,6 +82,8 @@ namespace CallFlowCore.Services
 
             //Добавляем звонок в активные по скиллу
             currentSkill.ActiveCalls.Add(oper.call);
+            currentSkill.CallAllocation.Item2.RemoveAt(currentSkill.CallAllocation.Item1.FindIndex(i => i == currentTime));
+            currentSkill.CallAllocation.Item1.RemoveAt(currentSkill.CallAllocation.Item1.FindIndex(i => i == currentTime));
 
             currentSkill.statistic.CallAnswered++;
 
@@ -101,6 +101,8 @@ namespace CallFlowCore.Services
             call.CallOfferedTime = currentTime;
 
             skill.CallsInQueue.Add(call);
+            skill.CallAllocation.Item2.RemoveAt(skill.CallAllocation.Item1.FindIndex(i => i == currentTime));
+            skill.CallAllocation.Item1.RemoveAt(skill.CallAllocation.Item1.FindIndex(i => i == currentTime));
         }
 
         public void CheckQueueInSkills(List<Skill> skills, int currentTime)
@@ -130,9 +132,10 @@ namespace CallFlowCore.Services
                     }
                 }
 
-                callsSamePriority = callsSamePriority.OrderBy(c => c.Duration).ToList();
+                //callsSamePriority = callsSamePriority.OrderBy(c => c.Duration).ToList();
+                Call[] callsSamePriorityArr = callsSamePriority.OrderBy(c => c.Duration).ToArray();
 
-                foreach (var c in callsSamePriority)
+                foreach (var c in callsSamePriorityArr)
                 {
                     //Находим скилл, в очереди которого стоит вызов с макс приоритетом и длительностью
                     Skill skillWithMaxPriorCall = skills.Find(s => s.CallsInQueue.Contains(c));
@@ -147,9 +150,12 @@ namespace CallFlowCore.Services
                     {
                         PassCallFromQueueToOperator(skillWithMaxPriorCall, freeOper, currentTime);
                         SetOperStatusInAllSkills(skills, freeOper);
+                        return;
                     }
                 }
+
             }
+
         }
 
         private int GetFreeCallID(List<Skill> skills)
@@ -159,7 +165,7 @@ namespace CallFlowCore.Services
 
             while (true)
             {
-                newCallID = random.Next(1, 999999);
+                newCallID = random.Next(1000000000, 2147483646);
 
                 var ActiveCalls = skills.Select(s => s.ActiveCalls).Select(lc => lc.Select(c => c).Where(c => c.CallID == newCallID));
                 var CallsInQueue = skills.Select(s => s.CallsInQueue).Select(lc => lc.Select(c => c).Where(c => c.CallID == newCallID));
@@ -244,26 +250,22 @@ namespace CallFlowCore.Services
         {
             if(opers.Select(o => o).Where(o => o.CurrentStatus == "Ready").Count() > 0)
             {
+                Dictionary<string, int> operatorsDict = GetOperatorsDict(opers, "Ready");
+
                 Random random = new Random();
-                Regex regex = new Regex(@"\d+");
-                Dictionary<string, int> operatorsDict = new Dictionary<string, int>();
+                int randomInt = 0;
 
                 try
                 {
-                    //Random operator
-                    foreach (var oper in opers)
-                    {
-                        if (regex.IsMatch(oper.Name))
-                            operatorsDict.Add(oper.Name, Convert.ToInt32(regex.Match(oper.Name).Value));
-                    }
-
-                    int maxTries = 1000;
+                    int maxTries = 100;
                     int currentTry = 0;
 
                     while (currentTry < maxTries)
                     {
-                        int randomInt = random.Next(operatorsDict.Values.Min() - 1, operatorsDict.Values.Max());
-                        Operator freeOper = opers[randomInt];
+                        randomInt = random.Next(operatorsDict.Values.Min(), operatorsDict.Values.Max());
+
+                        Operator freeOper = opers.Find(o => o.Name == "Operator" + randomInt);
+
                         if (freeOper.CurrentStatus == "Ready")
                             return freeOper;
 
@@ -272,12 +274,30 @@ namespace CallFlowCore.Services
                 }
                 catch (Exception e)
                 {
-                    MessageBox.Show("Ошибка во время поиска свободного оператора\n" + e.Message, "Ошибка получения оператора", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show($"Ошибка во время поиска свободного оператора\n{ e.Message} randomInt = {randomInt} where min oper index = {operatorsDict.Values.Min() - 1}, max {operatorsDict.Values.Max()}" , 
+                        "Ошибка получения оператора", MessageBoxButton.OK, MessageBoxImage.Error);
                     return null;
                 }
             }
 
             return null;
+        }
+
+        public Dictionary<string, int> GetOperatorsDict(List<Operator> opers, string status = null)
+        {
+            Regex regex = new Regex(@"\d+");
+            Dictionary<string, int> operatorsDict = new Dictionary<string, int>();
+
+            foreach (var oper in opers)
+            {
+                if (regex.IsMatch(oper.Name))
+                {
+                    if(status == null || (status != null && oper.CurrentStatus == status))
+                        operatorsDict.Add(oper.Name, Convert.ToInt32(regex.Match(oper.Name).Value));
+                }
+            }
+
+            return operatorsDict;
         }
 
         private void PassCallFromQueueToOperator(Skill skill, Operator oper, int currentTime)
@@ -439,20 +459,13 @@ namespace CallFlowCore.Services
             return statistics.ToString();
         }
 
-        public Skill ResetSkill(Skill skill)
+        public async Task<Skill> ResetSkill(Skill skill)
         {
-            //Skill newSkill = new Skill(skill.SkillName, skill.Operators, skill.Priority, skill.CallAllocation);
-            //newSkill.PriorCondition = skill.PriorCondition;
-            //newSkill.CallsAllocationInterval = skill.CallsAllocationInterval;
-            //newSkill.CallsDurationAllocation = skill.CallsDurationAllocation;
-            //newSkill.MaxTalkTimeDur = skill.MaxTalkTimeDur;
-            //newSkill.MinTalkTimeDur = skill.MinTalkTimeDur;
-            //newSkill.CallsAllocationInterval = skill.CallsAllocationInterval;
-
             skill.ActiveCalls = new List<Call>();
             skill.CallsInQueue = new List<Call>();
             skill.HistoricalCalls = new List<Call>();
             skill.statistic = new Statistics();
+            skill.CallAllocation = await Task.Run(() => GenerateCallsAllocation(skill.CallsDurationAllocation, 1, skill.CallsAllocationInterval, skill.MinTalkTimeDur, skill.MaxTalkTimeDur));
 
             for (int i = 0; i < skill.Operators.Count; i++)
             {
@@ -469,13 +482,13 @@ namespace CallFlowCore.Services
             return newOper;
         }
 
-        public ObservableCollection<Skill> ResetSkills(ObservableCollection<Skill> skills)
+        public async Task<ObservableCollection<Skill>> ResetSkills(ObservableCollection<Skill> skills)
         {
             ObservableCollection<Skill> newCollection = new ObservableCollection<Skill>();
 
             for (int i = 0; i < skills.Count; i++)
             {
-                newCollection.Add(ResetSkill(skills[i]));
+                newCollection.Add(await ResetSkill(skills[i]));
             }
 
             return newCollection;

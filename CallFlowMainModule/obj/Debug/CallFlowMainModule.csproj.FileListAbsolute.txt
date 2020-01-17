@@ -43,3 +43,4 @@ C:\Users\yaroslav.zatyamin\source\repos\CallFlowPriorityConsole\CallFlowMainModu
 C:\Users\yaroslav.zatyamin\source\repos\CallFlowPriorityConsole\CallFlowMainModule\bin\Debug\CallFlowCore.dll.config
 C:\Users\yaroslav.zatyamin\source\repos\CallFlowPriorityConsole\CallFlowMainModule\obj\Debug\Views\EmptyView.g.cs
 C:\Users\yaroslav.zatyamin\source\repos\CallFlowPriorityConsole\CallFlowMainModule\obj\Debug\Views\EmptyView.baml
+C:\Users\yaroslav.zatyamin\source\repos\CallFlowPriorityConsole\CallFlowMainModule\bin\Debug\Newtonsoft.Json.dll

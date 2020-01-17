@@ -50,3 +50,4 @@ C:\Users\yaroslav.zatyamin\source\repos\CallFlowPriorityConsole\CallFlowPriority
 C:\Users\yaroslav.zatyamin\source\repos\CallFlowPriorityConsole\CallFlowPriorityWPF\bin\Debug\CallFlowCore.dll
 C:\Users\yaroslav.zatyamin\source\repos\CallFlowPriorityConsole\CallFlowPriorityWPF\bin\Debug\CallFlowCore.pdb
 C:\Users\yaroslav.zatyamin\source\repos\CallFlowPriorityConsole\CallFlowPriorityWPF\bin\Debug\CallFlowCore.dll.config
+C:\Users\yaroslav.zatyamin\source\repos\CallFlowPriorityConsole\CallFlowPriorityWPF\bin\Debug\Newtonsoft.Json.dll

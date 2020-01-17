@@ -8,6 +8,7 @@ using Prism.Regions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 
 namespace CallFlowModules.ViewModels
@@ -105,7 +106,7 @@ namespace CallFlowModules.ViewModels
             }
 
             CurrentSkill.Operators = skillServices.GenerateOperators(OperatorsCountInSkill, OperatorsCountStartIndex);
-            CurrentSkill.CallAllocation = skillServices.GenerateCallsAllocation(CallsDurationAllocation, CurrentSkill.CallsAllocationInterval, MinCallDuration, MaxCallDuration);
+            CurrentSkill.CallAllocation = Task.Run(() => skillServices.GenerateCallsAllocation(CallsDurationAllocation, 1, CurrentSkill.CallsAllocationInterval, MinCallDuration, MaxCallDuration)).Result;
             CurrentSkill.CallsDurationAllocation = CallsDurationAllocation;
             CurrentSkill.MinTalkTimeDur = MinCallDuration;
             CurrentSkill.MaxTalkTimeDur = MaxCallDuration;
@@ -142,6 +143,7 @@ namespace CallFlowModules.ViewModels
                 AddSkillToListBtnContent = "Сохранить изменения";
                 PriorityRules = CurrentSkill.PriorityConditionString;
                 OperatorsCountInSkill = CurrentSkill.Operators.Count;
+                OperatorsCountStartIndex = skillServices.GetOperatorsDict(CurrentSkill.Operators).Values.Min();
             }
         }
 

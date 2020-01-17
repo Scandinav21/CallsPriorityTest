@@ -1,6 +1,7 @@
 ﻿using CallFlowModel;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 
 namespace CallFlowCore.Services
 {
@@ -8,7 +9,7 @@ namespace CallFlowCore.Services
     {
         List<Operator> GenerateOperators(int countOfOperators, int startIndex);
 
-        (List<int>, List<int>) GenerateCallsAllocation(Dictionary<int, int> callDurationAllocation, int intervalSeconds, int minTalkTimePer, int maxTalkTimePer);
+        Task<(List<int>, List<int>)> GenerateCallsAllocation(Dictionary<int, int> callDurationAllocation, int startAllocationTime, int intervalSeconds, int minTalkTimePer, int maxTalkTimePer);
 
         void AnswerCall(Operator oper, List<Skill> skills, Skill currentSkill, int currentTime);
 
@@ -24,12 +25,14 @@ namespace CallFlowCore.Services
 
         string GetStatistics(int currentTime, List<Skill> skills, Skill loadStatisticsFromSkill = null, bool showBrief = false, bool showOperStat = false);
 
-        Skill ResetSkill(Skill skill);
+        Task<Skill> ResetSkill(Skill skill);
 
-        ObservableCollection<Skill> ResetSkills(ObservableCollection<Skill> skills);
+        Task<ObservableCollection<Skill>> ResetSkills(ObservableCollection<Skill> skills);
 
         PriorityConditions GetPriorityConditions(string query);
 
         void TryRaiseSkillPriority(ObservableCollection<Skill> skills, Skill currentSkill);
+
+        Dictionary<string, int> GetOperatorsDict(List<Operator> opers, string status = null);
     }
 }

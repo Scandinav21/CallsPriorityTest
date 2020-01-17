@@ -7,7 +7,7 @@
              xmlns:core="clr-namespace:CallFlowCore.Converters;assembly=CallFlowCore"
              xmlns:i="clr-namespace:System.Windows.Interactivity;assembly=System.Windows.Interactivity"
              mc:Ignorable="d" 
-             Height="Auto" Width="Auto" MinWidth="650" MinHeight="600" MaxHeight="800" MaxWidth="800"
+             Height="Auto" Width="Auto" MinWidth="700" MinHeight="800" MaxHeight="800"
              xmlns:prism="http://prismlibrary.com/"
              prism:ViewModelLocator.AutoWireViewModel="True" ScrollViewer.VerticalScrollBarVisibility="Auto">
     <UserControl.Resources>
@@ -58,10 +58,13 @@
 
         <ContentControl prism:RegionManager.RegionName="SkillInfoRegion" DockPanel.Dock="Top"/>
 
-        <WrapPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="5" DockPanel.Dock="Bottom">
-            <Button Content="Start" Command="{Binding StartSimulation}" Margin="2" Padding="5" IsEnabled="{Binding BtnStartSimulationEnabled}"/>
-            <Button Content="Stop" Command="{Binding StopSimulation}" Margin="2" Padding="5"/>
-        </WrapPanel>
+        <StackPanel DockPanel.Dock="Bottom">
+            <WrapPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="5" >
+                <Button Content="Start" Command="{Binding StartSimulation}" Margin="2" Padding="5" IsEnabled="{Binding BtnStartSimulationEnabled}"/>
+                <Button Content="Stop" Command="{Binding StopSimulation}" Margin="2" Padding="5"/>
+            </WrapPanel>
+            <ProgressBar Minimum="0" Maximum="100" Value="{Binding ProgressBarValue}" Height="5" Margin="5"/>
+        </StackPanel>
         
         <TextBox Text="{Binding MainStatisticsInfo}" Margin="5,2" IsReadOnly="True" TextWrapping="Wrap" ScrollViewer.VerticalScrollBarVisibility="Auto"/>
 

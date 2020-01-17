@@ -1,0 +1,6 @@
+C:\Users\yaroslav.zatyamin\source\repos\CallFlowPriorityConsole\QueryParser\bin\Release\QueryParser.exe.config
+C:\Users\yaroslav.zatyamin\source\repos\CallFlowPriorityConsole\QueryParser\bin\Release\QueryParser.exe
+C:\Users\yaroslav.zatyamin\source\repos\CallFlowPriorityConsole\QueryParser\bin\Release\QueryParser.pdb
+C:\Users\yaroslav.zatyamin\source\repos\CallFlowPriorityConsole\QueryParser\obj\Release\QueryParser.csprojAssemblyReference.cache
+C:\Users\yaroslav.zatyamin\source\repos\CallFlowPriorityConsole\QueryParser\obj\Release\QueryParser.exe
+C:\Users\yaroslav.zatyamin\source\repos\CallFlowPriorityConsole\QueryParser\obj\Release\QueryParser.pdb

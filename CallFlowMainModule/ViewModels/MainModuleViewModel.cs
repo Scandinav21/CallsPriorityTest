@@ -2,12 +2,15 @@
 using CallFlowCore.Messages;
 using CallFlowCore.Services;
 using CallFlowModel;
+using Newtonsoft.Json;
 using Prism.Commands;
 using Prism.Events;
 using Prism.Mvvm;
 using Prism.Regions;
 using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -87,6 +90,13 @@ namespace CallFlowModules.ViewModels
             set { SetProperty(ref btnStartSimulationEnabled, value); }
         }
 
+        private int progressBarValue;
+        public int ProgressBarValue
+        {
+            get { return progressBarValue; }
+            set { SetProperty(ref progressBarValue, value); }
+        }
+
         ISkillServices skillServices;
 
         CancellationTokenSource cancellationToken;
@@ -112,6 +122,33 @@ namespace CallFlowModules.ViewModels
             SimulationSpeed = 1000;
 
             BtnStartSimulationEnabled = true;
+
+            DeserializeSkills();
+        }
+
+        public void DeserializeSkills()
+        {
+            JsonSerializer jsonSerializer = JsonSerializer.CreateDefault();
+
+            using(StreamReader sr = new StreamReader("Skills.json"))
+            using (JsonTextReader jsr = new JsonTextReader(sr))
+            {
+                object tempSkills = jsonSerializer.Deserialize(jsr, typeof(ObservableCollection<Skill>));
+
+                if (tempSkills != null && tempSkills is ObservableCollection<Skill>)
+                    Skills = (ObservableCollection<Skill>)tempSkills;
+            }
+        }
+
+        ~MainModuleViewModel()
+        {
+            JsonSerializer jsr = JsonSerializer.CreateDefault();
+
+            using (StreamWriter sr = new StreamWriter("Skills.json"))
+            using (JsonTextWriter jsw = new JsonTextWriter(sr))
+            {
+                jsr.Serialize(jsw, Skills);
+            }
         }
 
         private void Skills_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
@@ -162,7 +199,20 @@ namespace CallFlowModules.ViewModels
             AddSkillBtnContent = "";
             BtnStartSimulationEnabled = false;
             cancellationToken = new CancellationTokenSource();
-            Skills = skillServices.ResetSkills(Skills);
+
+            MainStatisticsInfo = "Подготавливаю данные, пожалуйста, подождите...";
+
+            ProgressBarValue = 0;
+            int progressStep = Skills.Count;
+
+            for (int i = 0; i < Skills.Count; i++)
+            {
+                ProgressBarValue += progressStep;
+                Skills[i] = await Task.Run(() => skillServices.ResetSkill(Skills[i]));
+            }
+
+            ProgressBarValue = 0;
+
             await Task.Run(() => SimulationProcess(), cancellationToken.Token);
         }
 
@@ -186,11 +236,8 @@ namespace CallFlowModules.ViewModels
 
         private async void SimulationProcess()
         {
-            int periodSec = Skills[0].CallsAllocationInterval;
-
             CurrentTime = 0;
-
-            int periodRequestData = periodSec;
+            int intervalRunning = 1;
 
             Skills = ConvertObservableCollection.ToObservableCollection(Skills.OrderBy(s => s.Priority).ToList());
 
@@ -198,6 +245,24 @@ namespace CallFlowModules.ViewModels
             {
                 foreach (var skill in Skills)
                 {
+                    //Reload calls data
+                    if (CurrentTime == skill.CallsAllocationInterval * intervalRunning)
+                    {
+                        MainStatisticsInfo = "Подготавливаю данные для следующего интервала, пожалуйста, подождите...";
+
+                        ProgressBarValue = 0;
+                        int progressStep = Skills.Count;
+
+                        foreach (var s in Skills)
+                        {
+                            ProgressBarValue += progressStep;
+                            s.CallAllocation = await Task.Run(() => skillServices.GenerateCallsAllocation(s.CallsDurationAllocation, CurrentTime, s.CallsAllocationInterval, s.MinTalkTimeDur, s.MaxTalkTimeDur));
+                        }
+                        
+                        intervalRunning++;
+                        ProgressBarValue = 0;
+                    }
+
                     //Обновляем время в операторах и скиллах
                     skill.statistic.AbandonedCalls += skillServices.UpdateSkillData(Skills.ToList(), skill);
 
@@ -209,15 +274,7 @@ namespace CallFlowModules.ViewModels
 
                     skillServices.CheckQueueInSkills(Skills.ToList(), CurrentTime);
 
-                    //Reload calls data
-                    if (currentTime == periodRequestData)
-                    {
-                        skill.CallAllocation = skillServices.GenerateCallsAllocation(skill.CallsDurationAllocation, skill.CallsAllocationInterval, skill.MinTalkTimeDur, skill.MaxTalkTimeDur);
-
-                        periodRequestData += periodSec;
-                    }
-
-                    foreach (var call in skill.CallAllocation.Item1.Where(c => c == CurrentTime - (periodRequestData - periodSec)).ToList())
+                    while (skill.CallAllocation.Item1.Where(c => c == CurrentTime).Count() > 0)
                     {
                         skill.statistic.CallsOffered++;
 
@@ -226,10 +283,10 @@ namespace CallFlowModules.ViewModels
 
                         //Добавляем новый звонок в очередь на скилле
                         if (oper == null)
-                            skillServices.PutCallToQueue(Skills.ToList(), skill, CurrentTime - (periodRequestData - periodSec));
+                            skillServices.PutCallToQueue(Skills.ToList(), skill, CurrentTime);
                         else
                             //Добавляем звонок оператору
-                            skillServices.AnswerCall(oper, Skills.ToList(), skill, CurrentTime - (periodRequestData - periodSec));
+                            skillServices.AnswerCall(oper, Skills.ToList(), skill, CurrentTime);
                     }
                 }
 
@@ -238,7 +295,8 @@ namespace CallFlowModules.ViewModels
                 else
                     MainStatisticsInfo = skillServices.GetStatistics(CurrentTime, Skills.ToList(), null, true);
 
-                await Task.Delay(SimulationSpeed);
+                Task delay = Task.Delay(SimulationSpeed);
+                delay.Wait(SimulationSpeed);
                 CurrentTime++;
             }
         }
