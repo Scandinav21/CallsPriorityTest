@@ -42,6 +42,7 @@
   <ItemGroup>
     <Compile Include="Converters\ConvertObservableCollection.cs" />
     <Compile Include="Converters\TestConverter.cs" />
+    <Compile Include="Converters\SpeedSliderConverter.cs" />
     <Compile Include="Converters\TimeConverter.cs" />
     <Compile Include="Messages\NewSkillMessage.cs" />
     <Compile Include="Services\ISkillServices.cs" />

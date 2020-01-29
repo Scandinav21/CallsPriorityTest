@@ -29,44 +29,60 @@ namespace CallFlowCore.Services
             return operators;
         }
 
-        public async Task<(List<int>, List<int>)> GenerateCallsAllocation(Dictionary<int, int> callDurationAllocation, int startAllocationTime, int intervalSeconds, int minTalkTimePer, int maxTalkTimePer)
+        public async Task<(List<int>, List<int>)> GenerateCallsAllocation(Dictionary<int, int> callDurationAllocationDict, int startAllocationTime, int intervalSeconds, int maxTalkTimePer)
         {
             List<int> callsAllocation = new List<int>();
             List<int> callsTalkTimeAllocation = new List<int>();
 
             await Task.Delay(100);
             Random randomSeconds = new Random();
+            Random randomDuration = new Random();
 
-            while (callDurationAllocation.Values.Select(v => v).Sum() > callsAllocation.Count())
+            //Пока сумма всех звонков по всем интервалам больше чем сумма всех сгенерированных звонков
+            while (callDurationAllocationDict.Values.Select(v => v).Sum() > callsAllocation.Count())
             {
-                //Генерим время поступления вызова
-                int newCallOfferedTime = randomSeconds.Next(startAllocationTime, startAllocationTime + intervalSeconds);
-
-                //Генерим длительность вызова
-                int newCallDuration = randomSeconds.Next(minTalkTimePer, maxTalkTimePer);
-
-                //Получаем ключ словаря с распределением соответственно длительности звонка
-                int numberAllocationKey = callDurationAllocation.Keys.Select(c => c)
-                    .Where(c => (newCallDuration >= c && newCallDuration < c + 60)
-                    || (newCallDuration >= c && c == callDurationAllocation.Keys.Last())).FirstOrDefault();
-
-                //Получаем количество вызовов с данным диапазоном длительности
-                int callsWithTheSameDurationInterval = callsTalkTimeAllocation.Select(c => c)
-                    .Where(c => (c >= numberAllocationKey && c < numberAllocationKey + 60 && numberAllocationKey < 660)
-                        || (c >= callDurationAllocation.Keys.Last() && numberAllocationKey == callDurationAllocation.Keys.Last())).Count();
-
-                if (callDurationAllocation[numberAllocationKey] > callsWithTheSameDurationInterval)
+                //Проходимся по всем заданным диапазонам звонков
+                foreach (var key in callDurationAllocationDict.Keys)
                 {
-                    callsAllocation.Add(newCallOfferedTime);
-                    callsTalkTimeAllocation.Add(newCallDuration);
-                }
+                    //Пока количество звонков в данном диапазоне меньше чем задано
+                    while (callDurationAllocationDict[key] > callsTalkTimeAllocation.Where(c => 
+                        (c >= key && c < key + 60 && key != callDurationAllocationDict.Last().Key) ||
+                        c >= key && key == callDurationAllocationDict.Last().Key).Count())
+                    {
+                        //Генерим время поступления вызова
+                        int newCallOfferedTime = randomSeconds.Next(startAllocationTime, startAllocationTime + intervalSeconds - 1);
 
-                await Task.Delay(10);
+                        //Генерим длительность вызова
+                        int newCallDuration = randomDuration.Next(key, callDurationAllocationDict[key] == callDurationAllocationDict.Last().Key ? maxTalkTimePer : key + 60 - 1);
+
+                        callsAllocation.Add(newCallOfferedTime);
+                        callsTalkTimeAllocation.Add(newCallDuration);
+
+                        await Task.Delay(10);
+                    }
+                }
             }
 
             callsAllocation.Sort();
+            callsTalkTimeAllocation = ShakeList(callsTalkTimeAllocation);
 
             return (callsAllocation, callsTalkTimeAllocation);
+        }
+
+        private List<int> ShakeList(List<int> listToShake)
+        {
+            Random randomListIndex = new Random();
+            List<int> shakedList = new List<int>();
+
+            while(listToShake.Count > 0)
+            {
+                int newRandomIndex = randomListIndex.Next(0, listToShake.Count);
+
+                shakedList.Add(listToShake[newRandomIndex]);
+                listToShake.RemoveAt(newRandomIndex);
+            }
+
+            return shakedList;
         }
 
         public void AnswerCall(Operator oper, List<Skill> skills, Skill currentSkill, int currentTime)
@@ -328,17 +344,22 @@ namespace CallFlowCore.Services
             }
         }
 
-        public void TryRaiseCallPriority(Skill currentSkill, int maxWaitTimeBeforeRaisePrior, int raisedPrior)
+        public bool TryRaiseCallPriority(Skill currentSkill, int maxWaitTimeBeforeRaisePrior, int raisedPrior)
         {
+            bool raisedSuccess = false;
+
             List<Call> callRaisePriority = currentSkill.CallsInQueue.Select(c => c).Where(c => c.Duration > maxWaitTimeBeforeRaisePrior).ToList();
 
             foreach (var call in callRaisePriority)
             {
                 call.CallPriority = raisedPrior;
+                raisedSuccess = true;
             }
+
+            return raisedSuccess;
         }
 
-        public void TryRaiseSkillPriority(ObservableCollection<Skill> skills, Skill currentSkill)
+        public bool TryRaiseSkillPriority(ObservableCollection<Skill> skills, Skill currentSkill)
         {
             if(currentSkill.PriorCondition != null && currentSkill.PriorCondition.priorityWhenQ != 0 && 
                 (currentSkill.PriorCondition.queueMultiple || currentSkill.PriorCondition.queueSingle) && 
@@ -350,12 +371,12 @@ namespace CallFlowCore.Services
                 {
                     foreach (var skill in currentSkill.PriorCondition.skills)
                     {
+                        //Полчаем скиллы, которые указаны в условиях для изменения приоритета и где очередь соответствует указанному условию
                         if (skills.Select(s => s)
                             .Where(s => s.SkillName == skill && s.CallsInQueue.Count() > currentSkill.PriorCondition.queueVal && 
                             s.SkillName != currentSkill.SkillName).Count() > 0)
                         {
-                            TryRaiseCallPriority(currentSkill, 0, currentSkill.PriorCondition.priorityWhenQ);
-                            return;
+                            return TryRaiseCallPriority(currentSkill, 0, currentSkill.PriorCondition.priorityWhenQ);
                         }
                     }
                 }
@@ -363,18 +384,20 @@ namespace CallFlowCore.Services
                 //Если очередь должна быть на всех скиллах списка
                 if(currentSkill.PriorCondition.queueMultiple)
                 {
-                    int skillsFetched = 0;
+                    List<Skill> skillsFetched = new List<Skill>();
 
                     foreach (var skill in skills)
                     {
                         if (currentSkill.PriorCondition.skills.Contains(skill.SkillName))
-                            skillsFetched++;
+                            skillsFetched.Add(skill);
                     }
 
-                    if (skillsFetched == currentSkill.PriorCondition.skills.Count)
-                        TryRaiseCallPriority(currentSkill, 0, currentSkill.PriorCondition.priorityWhenQ);
+                    if (skillsFetched.Select(s => s.CallsInQueue.Count > currentSkill.PriorCondition.queueVal).Count() == currentSkill.PriorCondition.skills.Count)
+                        return TryRaiseCallPriority(currentSkill, 0, currentSkill.PriorCondition.priorityWhenQ);
                 }
             }
+
+            return false;
         }
 
         public string GetStatistics(int currentTime, List<Skill> skills, Skill loadStatisticsFromSkill = null, bool showBrief = false, bool showOperStat = false)
@@ -445,9 +468,14 @@ namespace CallFlowCore.Services
 
                     statistics.Append($"-----HISTORICAL DATA {skill.SkillName}-----\n");
 
-                    foreach (var call in skill.HistoricalCalls)
+                    foreach (var call in skill.HistoricalCalls.OrderBy(c => c.CallOfferedTime))
                     {
-                        statistics.Append($"Call {call.CallID} in skill {skill.SkillName} was offered at {timeConverter.Convert(call.CallOfferedTime, null, null, null)} and was answered at {timeConverter.Convert(call.CallAnsweredTime, null, null, null)} with duration {timeConverter.Convert(call.TalkFullDuration, null, null, null)} and priority {call.CallPriority}\n");
+                        if(call.CallAnsweredTime == 0)
+                            //statistics.Append($"Call {call.CallID} in skill {skill.SkillName} was offered at {timeConverter.Convert(call.CallOfferedTime, null, null, null)} and was abandoned at {timeConverter.Convert(call.CallOfferedTime + call.TalkFullDuration, null, null, null)} with duration {timeConverter.Convert(call.TalkFullDuration, null, null, null)} and priority {call.CallPriority}\n");
+                            statistics.Append($"Call {call.CallID} offered at {timeConverter.Convert(call.CallOfferedTime, null, null, null)} abandoned at {timeConverter.Convert(call.CallOfferedTime + call.TalkFullDuration, null, null, null)} with duration {timeConverter.Convert(call.TalkFullDuration, null, null, null)} and priority {call.CallPriority}\n");
+                        else
+                            //statistics.Append($"Call {call.CallID} in skill {skill.SkillName} was offered at {timeConverter.Convert(call.CallOfferedTime, null, null, null)} and was answered at {timeConverter.Convert(call.CallAnsweredTime, null, null, null)} with duration {timeConverter.Convert(call.TalkFullDuration, null, null, null)} and priority {call.CallPriority}\n");
+                            statistics.Append($"Call {call.CallID} offered at {timeConverter.Convert(call.CallOfferedTime, null, null, null)} answered at {timeConverter.Convert(call.CallAnsweredTime, null, null, null)} wait time {timeConverter.Convert(call.CallAnsweredTime - call.CallOfferedTime, null, null, null)} with duration {timeConverter.Convert(call.TalkFullDuration, null, null, null)} and priority {call.CallPriority}\n");
                     }
 
                     if (skill.statistic.Calls.Count > 0)
@@ -465,7 +493,7 @@ namespace CallFlowCore.Services
             skill.CallsInQueue = new List<Call>();
             skill.HistoricalCalls = new List<Call>();
             skill.statistic = new Statistics();
-            skill.CallAllocation = await Task.Run(() => GenerateCallsAllocation(skill.CallsDurationAllocation, 1, skill.CallsAllocationInterval, skill.MinTalkTimeDur, skill.MaxTalkTimeDur));
+            skill.CallAllocation = await Task.Run(() => GenerateCallsAllocation(skill.CallsDurationAllocation, 1, skill.CallsAllocationInterval, skill.MaxTalkTimeDur));
 
             for (int i = 0; i < skill.Operators.Count; i++)
             {

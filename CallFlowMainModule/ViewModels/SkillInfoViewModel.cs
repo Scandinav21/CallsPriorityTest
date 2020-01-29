@@ -94,22 +94,24 @@ namespace CallFlowModules.ViewModels
 
             eventAggregator = ea;
             skillServices = ss;
+            OperatorsCountStartIndex = 1;
         }
 
         private void AddSkillToListExecute()
         {
             if(skill == null || skill.SkillName == "" || skill.Priority < 1 || operatorsCountInSKill < 1 || operGenStartIndex < 0
-                || skill.CallsAllocationInterval < 1 || minCallDuration < 0 || maxCallDuration < 1 || maxCallDuration <= minCallDuration)
+                || skill.CallsAllocationInterval < 1 || minCallDuration < 0 || maxCallDuration < 1 || maxCallDuration <= minCallDuration || OperatorsCountStartIndex < 1)
             {
                 MessageBox.Show("Проверьте корректность данных", "Ошибка ввода данных!", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 
             CurrentSkill.Operators = skillServices.GenerateOperators(OperatorsCountInSkill, OperatorsCountStartIndex);
-            CurrentSkill.CallAllocation = Task.Run(() => skillServices.GenerateCallsAllocation(CallsDurationAllocation, 1, CurrentSkill.CallsAllocationInterval, MinCallDuration, MaxCallDuration)).Result;
+            //CurrentSkill.CallAllocation = Task.Run(() => skillServices.GenerateCallsAllocation(CallsDurationAllocation, 1, CurrentSkill.CallsAllocationInterval, MinCallDuration, MaxCallDuration)).Result;
             CurrentSkill.CallsDurationAllocation = CallsDurationAllocation;
             CurrentSkill.MinTalkTimeDur = MinCallDuration;
             CurrentSkill.MaxTalkTimeDur = MaxCallDuration;
+            CurrentSkill.PriorityConditionString = PriorityRules;
 
             if (PriorityRules != null && PriorityRules.Length > 0)
             {

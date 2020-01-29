@@ -9,7 +9,7 @@ namespace CallFlowCore.Services
     {
         List<Operator> GenerateOperators(int countOfOperators, int startIndex);
 
-        Task<(List<int>, List<int>)> GenerateCallsAllocation(Dictionary<int, int> callDurationAllocation, int startAllocationTime, int intervalSeconds, int minTalkTimePer, int maxTalkTimePer);
+        Task<(List<int>, List<int>)> GenerateCallsAllocation(Dictionary<int, int> callDurationAllocation, int startAllocationTime, int intervalSeconds, int maxTalkTimePer);
 
         void AnswerCall(Operator oper, List<Skill> skills, Skill currentSkill, int currentTime);
 
@@ -21,7 +21,7 @@ namespace CallFlowCore.Services
 
         Operator GetFreeOperator(List<Operator> opers);
 
-        void TryRaiseCallPriority(Skill currentSkill, int maxWaitTimeBeforeRaisePrior, int raisedPrior);
+        bool TryRaiseCallPriority(Skill currentSkill, int maxWaitTimeBeforeRaisePrior, int raisedPrior);
 
         string GetStatistics(int currentTime, List<Skill> skills, Skill loadStatisticsFromSkill = null, bool showBrief = false, bool showOperStat = false);
 
@@ -31,7 +31,7 @@ namespace CallFlowCore.Services
 
         PriorityConditions GetPriorityConditions(string query);
 
-        void TryRaiseSkillPriority(ObservableCollection<Skill> skills, Skill currentSkill);
+        bool TryRaiseSkillPriority(ObservableCollection<Skill> skills, Skill currentSkill);
 
         Dictionary<string, int> GetOperatorsDict(List<Operator> opers, string status = null);
     }

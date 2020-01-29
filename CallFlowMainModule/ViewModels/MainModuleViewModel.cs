@@ -8,6 +8,7 @@ using Prism.Events;
 using Prism.Mvvm;
 using Prism.Regions;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
@@ -54,6 +55,7 @@ namespace CallFlowModules.ViewModels
         public DelegateCommand StopSimulation { get; set; }
         public DelegateCommand DeleteSkill { get; set; }
         public DelegateCommand SkillSelectedChanged { get; set; }
+        public DelegateCommand OpenHelp { get; set; }
 
         private int currentTime;
         public int CurrentTime
@@ -111,6 +113,7 @@ namespace CallFlowModules.ViewModels
             DeleteSkill = new DelegateCommand(DeleteSkillExecute, CanDeleteSkill);
             StopSimulation = new DelegateCommand(StopSimulationExecute);
             SkillSelectedChanged = new DelegateCommand(SkillSelectedChangedExecute);
+            OpenHelp = new DelegateCommand(OpenHelpExecute);
 
             AddSkillBtnContent = "Создать скилл";
 
@@ -159,6 +162,11 @@ namespace CallFlowModules.ViewModels
 
         #region Commands
 
+        private void OpenHelpExecute()
+        {
+            Process.Start("Help.txt");
+        }
+
         private void SkillSelectedChangedExecute()
         {
             if (cancellationToken != null && cancellationToken.Token.IsCancellationRequested && SelectedSkill != null)
@@ -175,8 +183,11 @@ namespace CallFlowModules.ViewModels
 
         private void DeleteSkillExecute()
         {
-            if(Skills != null && Skills.Count > 0)
+            if (Skills != null && Skills.Count > 0)
+            {
                 Skills.Remove(SelectedSkill);
+                regionManager.RequestNavigate("SkillInfoRegion", "EmptyView");
+            }
         }
 
         private bool CanStartSimulation()
@@ -256,7 +267,7 @@ namespace CallFlowModules.ViewModels
                         foreach (var s in Skills)
                         {
                             ProgressBarValue += progressStep;
-                            s.CallAllocation = await Task.Run(() => skillServices.GenerateCallsAllocation(s.CallsDurationAllocation, CurrentTime, s.CallsAllocationInterval, s.MinTalkTimeDur, s.MaxTalkTimeDur));
+                            s.CallAllocation = await Task.Run(() => skillServices.GenerateCallsAllocation(s.CallsDurationAllocation, CurrentTime, s.CallsAllocationInterval, s.MaxTalkTimeDur));
                         }
                         
                         intervalRunning++;
@@ -266,12 +277,18 @@ namespace CallFlowModules.ViewModels
                     //Обновляем время в операторах и скиллах
                     skill.statistic.AbandonedCalls += skillServices.UpdateSkillData(Skills.ToList(), skill);
 
+                    bool raisedPriority = false;
+
+                    //Если задана очередь, на каких-либо скиллах
                     if (skill.PriorCondition.queueMultiple || skill.PriorCondition.queueSingle)
-                        skillServices.TryRaiseSkillPriority(Skills, skill);
-
-                    if (skill.PriorCondition.timeWait && skill.PriorCondition.timeWaitVal > 0)
+                        //Пробуем изменить приоритет вызовов
+                        raisedPriority = skillServices.TryRaiseSkillPriority(Skills, skill);
+                        
+                    //AND 1
+                    //OR -1
+                    if (skill.PriorCondition.timeWait && skill.PriorCondition.timeWaitVal > 0 && ((skill.PriorCondition.unitCondition == 1 && raisedPriority) || (skill.PriorCondition.unitCondition == -1 && !raisedPriority) || skill.PriorCondition.unitCondition == 0))
                         skillServices.TryRaiseCallPriority(skill, skill.PriorCondition.timeWaitVal, skill.PriorCondition.priorityWhenTimeW);
-
+                    
                     skillServices.CheckQueueInSkills(Skills.ToList(), CurrentTime);
 
                     while (skill.CallAllocation.Item1.Where(c => c == CurrentTime).Count() > 0)
